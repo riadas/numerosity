@@ -33,7 +33,7 @@ how_many_10_blur = HowMany(Blur(10))
 
 # compare tasks
 compare_exact = Compare((Exact(1), Exact(3)))
-compare_blur = Compare((Blur(6), Exact(10)))
+compare_blur = Compare((Blur(6), Blur(10)))
 compare_across = Compare((Exact(1), Blur(5)))
 
 tasks = [
