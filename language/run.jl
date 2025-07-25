@@ -30,3 +30,7 @@ println()
 for i in 1:length(languages) 
     println("$(languages[i]): $(final_probs[i])")
 end
+
+label(add(meaning(word), Exact(1)))
+label(add(meaning(word), meaning(word)))
+# bigger blurs correspond to bigger numbers

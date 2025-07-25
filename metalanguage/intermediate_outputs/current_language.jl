@@ -21,23 +21,23 @@ function five(set::Exact)::Bool
 end
 
 function six(set::Exact)::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three, four, five]))
+    set.value == 6
 end
 
 function seven(set::Exact)::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three, four, five]))
+    set.value == 7
 end
 
 function eight(set::Exact)::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three, four, five]))
+    set.value == 8
 end
 
 function nine(set::Exact)::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three, four, five]))
+    set.value == 9
 end
 
 function ten(set::Exact)::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three, four, five]))
+    set.value == 10
 end
 
 # ANS
