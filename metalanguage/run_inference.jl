@@ -3,15 +3,17 @@ include("../task_configs/generate_tasks.jl")
 using Plots
 using Combinatorics
 
-global scale = 1 # 0.000000001
+global scale = 100000000000000000000000000000000000000000000000 # 0.000000001
 
-global alpha_num_defined = 0.0000000000000000000000000000000000001 * scale 
-global alpha_full_knower_compression = 0.0000000000000000000000000000000000000000000000000000000000000000000000001 * scale
-global alpha_ANS_reconciled = 0.0000000001 * scale
+global alpha_num_defined = 0.00000000000000000000000000000000000000000000000000000000000001
+global alpha_full_knower_compression = 0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+global alpha_ANS_reconciled = 0.000000000000001
+global alpha_represent_unknown_def = 0.9
+global alpha_parallel_individuation_limit = 0.97
 
 function compute_prior(spec_name)
-    defined_subset_numbers, full_knower_compression, ANS_reconciled = eval(Meta.parse(spec_name))
-    prob = 1.0
+    defined_subset_numbers, full_knower_compression, ANS_reconciled, represent_unknown_def, parallel_individuation_lim = eval(Meta.parse(spec_name))
+    prob = scale * 1.0
     
     prob = prob * alpha_num_defined^(length(defined_subset_numbers))
 
@@ -25,6 +27,18 @@ function compute_prior(spec_name)
         prob = prob * alpha_ANS_reconciled
     else
         prob = prob * (1 - alpha_ANS_reconciled)
+    end
+
+    if occursin("base", represent_unknown_def)
+        prob = prob * alpha_represent_unknown_def
+    else
+        prob = prob * (1 - alpha_represent_unknown_def)
+    end
+
+    if parallel_individuation_lim == 3 
+        prob = prob * alpha_parallel_individuation_limit
+    else
+        prob = prob * (1 - alpha_parallel_individuation_limit)
     end
 
     # TODO: not yet normalized
@@ -42,8 +56,8 @@ function compute_likelihood(dataset)
 end
 
 # generate all combinations
-defined_exact_subset = collect(combinations(1:10)) # collect(combinations(1:max_num))
-raw_specs = collect(Iterators.product(defined_exact_subset, [true, false], [true, false]))
+defined_exact_subset = [[], collect(combinations(1:10))...] # collect(combinations(1:max_num)) # 1:4
+raw_specs = collect(Iterators.product(defined_exact_subset, [true, false], [true, false], ["represent_unknown_base_definition", "represent_unknown_intermediate_definition"], [3, 4]))
 
 # default spec
 default_spec = Dict([
@@ -78,20 +92,26 @@ default_spec = Dict([
 
     "full_knower_compression" => false, 
     "ANS_reconciled" => false,
+
+    "parallel_individuation_limit" => 3,
+    "represent_unknown_definition" => "represent_unknown_base_definition",
+
 ])
 
 specs = []
 spec_names = []
-push!(specs, default_spec)
-push!(spec_names, "Any[Any[], false, false]")
+# push!(specs, default_spec)
+# push!(spec_names, """Any[Any[], false, false, "represent_unknown_base_definition", 3]""")
 for raw_spec in raw_specs 
     spec = deepcopy(default_spec)
 
-    defined_subset_numbers, full_knower_compression, ANS_reconciled = raw_spec
+    defined_subset_numbers, full_knower_compression, ANS_reconciled, represent_unknown, parallel_individuation_lim = raw_spec
 
     if length(intersect([1, 2, 3], defined_subset_numbers)) != 3 && full_knower_compression || !full_knower_compression && ANS_reconciled
         continue
     end
+
+    spec["parallel_individuation_limit"] = parallel_individuation_lim
 
     if full_knower_compression 
         spec["full_knower_compression"] = true
@@ -99,6 +119,7 @@ for raw_spec in raw_specs
         for i in 2:max_num 
             spec["$(nums_to_number_words[i])_definition"] = compressed_exact_definition
         end
+        spec["represent_unknown_definition"] = "represent_unknown_final_definition"
     else
         undefined_subset_numbers = filter(x -> !(x in defined_subset_numbers), 1:max_num)
         undefined_definition_list = "[$(join(map(x -> nums_to_number_words[x], defined_subset_numbers), ", "))]"
@@ -110,6 +131,7 @@ for raw_spec in raw_specs
         for i in defined_subset_numbers 
             spec["$(nums_to_number_words[i])_definition"] = "set.value == $(i)"
         end
+        spec["represent_unknown_definition"] = represent_unknown
     end
 
     spec["ANS_reconciled"] = ANS_reconciled
@@ -120,41 +142,50 @@ for raw_spec in raw_specs
     end
 
     push!(specs, spec)
-    push!(spec_names, string([defined_subset_numbers, full_knower_compression, ANS_reconciled]))
+    push!(spec_names, string([defined_subset_numbers, full_knower_compression, ANS_reconciled, represent_unknown, parallel_individuation_lim]))
 end
 
 intervened_spec_names = [
-    [[], false, false],
-    [[1], false, false],
-    [[1, 2], false, false],
-    [[1, 2, 3], false, false],
+    [[], false, false, "represent_unknown_base_definition", 3],
+    [[], false, false, "represent_unknown_intermediate_definition", 3],
+    [[], false, false, "represent_unknown_intermediate_definition", 4],
+    [[1], false, false, "represent_unknown_intermediate_definition", 4],
+    [[1, 2], false, false, "represent_unknown_intermediate_definition", 4],
+    [[1, 2, 3], false, false, "represent_unknown_intermediate_definition", 4],
     # [[1, 2, 3, 4], false, false],
-    [[1, 2, 3], true, false],
-    [[1, 2, 3], true, true]
+    [[1, 2, 3], true, false, "represent_unknown_base_definition", 3],
+    [[1, 2, 3], true, true, "represent_unknown_base_definition", 3]
 ]
-intervened_spec_names = map(x -> string(x), intervened_spec_names)
+intervened_spec_names = map(x -> replace(string(x), "Any[[" => "Any[Any["), intervened_spec_names)
+# specs = map(name -> specs[findall(x -> x == name, spec_names)[1]], intervened_spec_names)
+# spec_names = intervened_spec_names
+
+@show length(specs)
+@show length(spec_names)
+
 # indices = map(x -> findall(y -> y == x, spec_names)[1], intervened_spec_names)
 # specs = map(i -> specs[i], indices)
 # spec_names = intervened_spec_names
 intervened_spec_names_pretty = [
-    "non-knower",
-    "one-knower",
-    "two-knower",
-    "three-knower",
+    "non-knower, parallel indiv. limit=3",
+    "non-knower, parallel indiv. limit=3, count seq. ~ quantity",
+    "non-knower, parallel indiv. limit=4, count seq. ~ quantity",
+    "one-knower, parallel indiv. limit=4",
+    "two-knower, parallel indiv. limit=4",
+    "three-knower, parallel indiv. limit=4",
     # "four-knower",
     "full-knower, ANS unreconciled",
     "full-knower, ANS reconciled",
 ]
-
 spec_names_pretty = Dict(map(x -> x => "", spec_names))
 for i in 1:length(intervened_spec_names)
     spec_names_pretty[string(intervened_spec_names[i])] = intervened_spec_names_pretty[i]
 end
 
 dataset = Dict([
-    give_1 => 20, # = GiveN("one")
-    give_2 => 15, # = GiveN("two")
-    give_3 => 10, # = GiveN("three")
+    give_1 => 15, # = GiveN("one")
+    give_2 => 12, # = GiveN("two")
+    give_3 => 9, # = GiveN("three")
     give_4 => 5, # = GiveN("four")
     give_5 => 1, # = GiveN("five")
     give_6 => 1, # = GiveN("six")
@@ -184,10 +215,19 @@ dataset = Dict([
     compare_exact => 1,
     compare_blur => 1,
     compare_across => 1,
+
+    labeled_compare_2_4_no_count => 1,
+    labeled_compare_2_4_correct_count => 1,
+
+    labeled_compare_4_6_no_count => 1,
+    labeled_compare_4_6_correct_count => 1,
+
+    # labeled_compare_3_4_no_count => 1,
+    labeled_compare_3_4_correct_count => 1,
 ])
 
 println("length(specs): $(length(specs))")
-max_repeats = 10
+max_repeats = 13
 single_repeat_results = Dict()
 results = Dict()
 for repeats in 1:max_repeats 
@@ -250,7 +290,7 @@ for i in 1:length(spec_names)
     # println("\tlikelihood: $(likelihoods[i])")
     if spec_name in intervened_spec_names
         println(spec_name)
-        p = plot!(collect(1:max_repeats), map(r -> results[r][spec_name], 1:max_repeats) ./ sums, label = "$(spec_names_pretty[spec_name])", legend=:outerbottom) # legend=:outerbottom 
+        p = plot!(collect(1:max_repeats), map(r -> results[r][spec_name], 1:max_repeats) ./ sums, label = "$(spec_names_pretty[spec_name])", legend=:outerbottom, xticks=0:1:max_repeats) # legend=:outerbottom 
     end
 end
 

@@ -1,6 +1,10 @@
 using StatsBase
 abstract type Task end
 abstract type NumberRep end
+abstract type CountRep end
+
+global parallel_individuation_limit = 4
+global ANS_ratio = 3/2
 
 struct Exact <: NumberRep
     value::Int
@@ -8,6 +12,24 @@ end
 
 struct Blur <: NumberRep
     value::Int
+end
+
+struct Unknown <: NumberRep
+    value::Int
+end
+
+struct VerbalCount <: CountRep 
+    value::Int
+    foreign::Bool
+    reordered::Bool
+    one_to_one::Bool
+end
+
+struct VerbalCountWithCP <: CountRep 
+    value::Int
+    foreign::Bool
+    reordered::Bool
+    one_to_one::Bool
 end
 
 struct GiveN <: Task 
@@ -24,6 +46,11 @@ struct Compare <: Task
     input::Tuple{NumberRep, NumberRep}
     output::Vector{NumberRep}
 end
+
+struct LabeledCompare <: Task 
+    input::Tuple{Tuple{NumberRep, NumberRep}, Tuple{Union{String, CountRep}, Union{String, CountRep}}}
+    output::Vector{NumberRep}
+end 
 
 max_num = 10
 number_words_to_nums = Dict([
@@ -42,6 +69,9 @@ number_words_to_nums = Dict([
 number_words_to_nums = Dict( filter(p -> last(p) <= max_num, collect(number_words_to_nums)))
 
 nums_to_number_words = Dict(map(p -> p[2] => p[1], collect(number_words_to_nums)))
+
+VerbalCount(value::Int) = VerbalCount(value, false, false, true)
+VerbalCountWithCP(value::Int) = VerbalCountWithCP(value, false, false, true)
 
 GiveN(input::String) = GiveN(input, Exact(number_words_to_nums[input]))
 HowMany(input::NumberRep) = HowMany(input, first(filter(x -> last(x) == input.value, collect(number_words_to_nums))[1]))
@@ -69,12 +99,13 @@ Base.isgreater(x::Blur, y::Exact) = sample([false, true])
 
 Base.string(x::Exact) = """< $(join(map(i -> "*", 1:x.value), " ")) >"""
 Base.string(x::Blur) = """? $(join(map(i -> "*", 1:x.value), " ")) ?"""
+Base.string(x::Unknown) = """??? ($(x.value)) ???"""
 
 function not(x::Bool)
     !x
 end
 
-function not(x::Vector{Bool})
+function not(x)
     !foldl(|, x, init=false)
 end
 
@@ -163,6 +194,70 @@ function compare(sets::Tuple{NumberRep, NumberRep}, prob=false)
                 0.5
             end
         end
+    end
+end
+
+function represent_unknown(set::NumberRep, label::Union{String, CountRep})::NumberRep
+    if !(set isa Unknown)
+        set
+    elseif set.value <= parallel_individuation_limit 
+        Exact(set.value)
+    elseif label isa String 
+        set
+    else # if label isa CountRep 
+        if (label isa VerbalCount && !label.foreign && !label.reordered && label.one_to_one) || (label isa VerbalCountWithCP && label.one_to_one)
+            Blur(set.value)
+        else
+            set
+        end
+    end
+end
+
+function labeled_compare(labeled_sets::Tuple{Tuple{NumberRep, NumberRep}, Tuple{Union{String, CountRep}, Union{String, CountRep}}}, prob=false)
+    sets = labeled_sets[1]
+    labels = labeled_sets[2]
+
+    set1 = Base.invokelatest(represent_unknown, sets[1], labels[1])
+    set2 = Base.invokelatest(represent_unknown, sets[2], labels[2])
+
+    if !prob 
+
+        if set1 isa Unknown || set2 isa Unknown 
+            sample([sets...])
+        elseif set1 isa Blur || set2 isa Blur 
+            max_value = max(set1.value, set2.value)
+            min_value = min(set1.value, set2.value)
+            if max_value/min_value > ANS_ratio 
+                max_sets = filter(x -> x.value == max_value, sets)
+                sample([max_sets...])
+            else
+                sample([sets...])
+            end
+        else
+            if set1.value < set2.value 
+                sets[2]
+            elseif set1.value > set2.value 
+                sets[1]
+            else
+                sample([sets...])
+            end
+        end
+    else
+
+        if set1 isa Unknown || set2 isa Unknown 
+            0.5
+        elseif set1 isa Blur || set2 isa Blur 
+            max_value = max(set1.value, set2.value)
+            min_value = min(set1.value, set2.value)
+            if max_value/min_value >= ANS_ratio || max_value == min_value
+                1.0
+            else
+                0.5
+            end
+        else
+            1.0
+        end        
+
     end
 end
 

@@ -36,6 +36,16 @@ compare_exact = Compare((Exact(1), Exact(3)))
 compare_blur = Compare((Blur(6), Blur(10)))
 compare_across = Compare((Exact(1), Blur(5)))
 
+# labeled compare tasks 
+labeled_compare_2_4_no_count = LabeledCompare(((Unknown(2), Unknown(4)), ("two", "four")), NumberRep[Unknown(4)])
+labeled_compare_2_4_correct_count = LabeledCompare(((Unknown(2), Unknown(4)), (VerbalCount(2), VerbalCount(4))), NumberRep[Unknown(4)])
+
+labeled_compare_4_6_no_count = LabeledCompare(((Unknown(4), Unknown(6)), ("four", "six")), NumberRep[Unknown(6)])
+labeled_compare_4_6_correct_count = LabeledCompare(((Unknown(4), Unknown(6)), (VerbalCount(4), VerbalCount(6))), NumberRep[Unknown(6)])
+
+labeled_compare_3_4_no_count = LabeledCompare(((Unknown(3), Unknown(4)), ("three", "four")), NumberRep[Unknown(4)])
+labeled_compare_3_4_correct_count = LabeledCompare(((Unknown(3), Unknown(4)), (VerbalCount(3), VerbalCount(4))), NumberRep[Unknown(4)])
+
 tasks = [
     give_1, # = GiveN("one")
     give_2, # = GiveN("two")
@@ -68,5 +78,14 @@ tasks = [
 
     compare_exact,
     compare_blur,
-    compare_across
+    compare_across,
+
+    labeled_compare_2_4_no_count,
+    labeled_compare_2_4_correct_count,
+
+    labeled_compare_4_6_no_count,
+    labeled_compare_4_6_correct_count,
+
+    labeled_compare_3_4_no_count,
+    labeled_compare_3_4_correct_count,
 ]

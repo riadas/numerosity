@@ -1,43 +1,45 @@
 include("../../base/base_semantics.jl")
 
+global parallel_individuation_limit = 3
+
 function one(set::Union{Exact, Blur})::Bool
     set.value == 1
 end
 
 function two(set::Union{Exact, Blur})::Bool
-    set.value == 2
+    Base.invokelatest(eval(Meta.parse(nums_to_number_words[number_words_to_nums[string(StackTraces.stacktrace()[1].func)] - 1])), remove(set, Exact(1)))
 end
 
 function three(set::Union{Exact, Blur})::Bool
-    set.value == 3
+    Base.invokelatest(eval(Meta.parse(nums_to_number_words[number_words_to_nums[string(StackTraces.stacktrace()[1].func)] - 1])), remove(set, Exact(1)))
 end
 
 function four(set::Union{Exact, Blur})::Bool
-    set.value == 4
+    Base.invokelatest(eval(Meta.parse(nums_to_number_words[number_words_to_nums[string(StackTraces.stacktrace()[1].func)] - 1])), remove(set, Exact(1)))
 end
 
 function five(set::Exact)::Bool
-    set.value == 5
+    Base.invokelatest(eval(Meta.parse(nums_to_number_words[number_words_to_nums[string(StackTraces.stacktrace()[1].func)] - 1])), remove(set, Exact(1)))
 end
 
 function six(set::Exact)::Bool
-    set.value == 6
+    Base.invokelatest(eval(Meta.parse(nums_to_number_words[number_words_to_nums[string(StackTraces.stacktrace()[1].func)] - 1])), remove(set, Exact(1)))
 end
 
 function seven(set::Exact)::Bool
-    set.value == 7
+    Base.invokelatest(eval(Meta.parse(nums_to_number_words[number_words_to_nums[string(StackTraces.stacktrace()[1].func)] - 1])), remove(set, Exact(1)))
 end
 
 function eight(set::Exact)::Bool
-    set.value == 8
+    Base.invokelatest(eval(Meta.parse(nums_to_number_words[number_words_to_nums[string(StackTraces.stacktrace()[1].func)] - 1])), remove(set, Exact(1)))
 end
 
 function nine(set::Exact)::Bool
-    set.value == 9
+    Base.invokelatest(eval(Meta.parse(nums_to_number_words[number_words_to_nums[string(StackTraces.stacktrace()[1].func)] - 1])), remove(set, Exact(1)))
 end
 
 function ten(set::Exact)::Bool
-    set.value == 10
+    Base.invokelatest(eval(Meta.parse(nums_to_number_words[number_words_to_nums[string(StackTraces.stacktrace()[1].func)] - 1])), remove(set, Exact(1)))
 end
 
 # ANS
@@ -66,24 +68,9 @@ function ten(set::Blur)::Bool
 end
 
 function list_syntax_next(word::String)::String 
-    if word == "one"
-    return two
-elseif word == "two"
-    return three
-elseif word == "three"
-    return four
-elseif word == "four"
-    return five
-elseif word == "five"
-    return six
-elseif word == "six"
-    return seven
-elseif word == "seven"
-    return eight
-elseif word == "eight"
-    return nine
-elseif word == "nine"
-    return ten
+    label(add(meaning(word), Exact(1)))
 end
 
+function represent_unknown(set::NumberRep, label::Union{String, CountRep})::NumberRep
+    Exact(set.value)
 end

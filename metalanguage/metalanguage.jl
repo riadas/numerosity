@@ -2,6 +2,9 @@ include("../base/base_semantics.jl")
 
 function generate_language(spec)    
     language = language_template
+
+    language = replace(language, "[parallel_individuation_limit]" => spec["parallel_individuation_limit"])
+
     for k in keys(number_words_to_nums)
         language = replace(language, "[$(k)_definition]" => spec["$(k)_definition"])
     end
@@ -12,11 +15,13 @@ function generate_language(spec)
 
     if spec["full_knower_compression"]
         list_syntax_definition = list_syntax_compressed
+        language = replace(language, "[represent_unknown_definition]" => represent_unknown_final_definition)
     else
         list_syntax_definition = list_syntax_next_definition_template
         for k in filter(x -> occursin("list_syntax_next", x), collect(keys(spec)))
             list_syntax_definition = replace(list_syntax_definition, "[$(k)]" => spec[k])
         end
+        language = replace(language, "[represent_unknown_definition]" => eval(Meta.parse(spec["represent_unknown_definition"])))
     end
 
     language = replace(language, "[list_syntax_next_definition_template]" => list_syntax_definition)
@@ -30,6 +35,8 @@ end
 
 language_template = """
 include("../../base/base_semantics.jl")
+
+global parallel_individuation_limit = [parallel_individuation_limit]
 
 function one(set::Union{Exact, Blur})::Bool
     [one_definition]
@@ -98,6 +105,52 @@ end
 
 function list_syntax_next(word::String)::String 
     [list_syntax_next_definition_template]
+end
+
+function represent_unknown(set::NumberRep, label::Union{String, CountRep})::NumberRep
+    [represent_unknown_definition]
+end
+"""
+
+# function represent_unknown(set::NumberRep, label::Union{String, CountRep})::NumberRep
+#     if !(set isa Unknown)
+#         set
+#     elseif set.value <= parallel_individuation_limit 
+#         Exact(set.value)
+#     elseif label isa String 
+#         set
+#     else # if label isa CountRep 
+#         if (label isa VerbalCount && !label.foreign && !label.reordered && label.one_to_one) || (label isa VerbalCountWithCP && label.one_to_one)
+#             Blur(set.value)
+#         else
+#             set
+#         end
+#     end
+# end
+
+# function represent_unknown(set::NumberRep, label::Union{String, CountRep})::NumberRep
+#     set
+# end
+
+# function represent_unknown(set::NumberRep, label::Union{String, CountRep})::NumberRep
+#     Exact(set.value)
+# end
+
+represent_unknown_base_definition = "set"
+represent_unknown_final_definition = "Exact(set.value)"
+represent_unknown_intermediate_definition = """
+if !(set isa Unknown)
+    set
+elseif set.value <= parallel_individuation_limit 
+    Exact(set.value)
+elseif label isa String 
+    set
+else # if label isa CountRep 
+    if (label isa VerbalCount && !label.foreign && !label.reordered && label.one_to_one) || (label isa VerbalCountWithCP && label.one_to_one)
+        Blur(set.value)
+    else
+        set
+    end
 end
 """
 
