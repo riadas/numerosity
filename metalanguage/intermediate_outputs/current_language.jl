@@ -1,45 +1,45 @@
 include("../../base/base_semantics.jl")
 
-global parallel_individuation_limit = 3
+global parallel_individuation_limit = 4
 
 function one(set::Union{Exact, Blur})::Bool
     set.value == 1
 end
 
 function two(set::Union{Exact, Blur})::Bool
-    Base.invokelatest(eval(Meta.parse(nums_to_number_words[number_words_to_nums[string(StackTraces.stacktrace()[1].func)] - 1])), remove(set, Exact(1)))
+    set.value == 2
 end
 
 function three(set::Union{Exact, Blur})::Bool
-    Base.invokelatest(eval(Meta.parse(nums_to_number_words[number_words_to_nums[string(StackTraces.stacktrace()[1].func)] - 1])), remove(set, Exact(1)))
+    set.value == 3
 end
 
 function four(set::Union{Exact, Blur})::Bool
-    Base.invokelatest(eval(Meta.parse(nums_to_number_words[number_words_to_nums[string(StackTraces.stacktrace()[1].func)] - 1])), remove(set, Exact(1)))
+    set.value == 4
 end
 
 function five(set::Exact)::Bool
-    Base.invokelatest(eval(Meta.parse(nums_to_number_words[number_words_to_nums[string(StackTraces.stacktrace()[1].func)] - 1])), remove(set, Exact(1)))
+    not(map(x -> Base.invokelatest(x, set), [one, two, three, four]))
 end
 
 function six(set::Exact)::Bool
-    Base.invokelatest(eval(Meta.parse(nums_to_number_words[number_words_to_nums[string(StackTraces.stacktrace()[1].func)] - 1])), remove(set, Exact(1)))
+    not(map(x -> Base.invokelatest(x, set), [one, two, three, four]))
 end
 
 function seven(set::Exact)::Bool
-    Base.invokelatest(eval(Meta.parse(nums_to_number_words[number_words_to_nums[string(StackTraces.stacktrace()[1].func)] - 1])), remove(set, Exact(1)))
+    not(map(x -> Base.invokelatest(x, set), [one, two, three, four]))
 end
 
 function eight(set::Exact)::Bool
-    Base.invokelatest(eval(Meta.parse(nums_to_number_words[number_words_to_nums[string(StackTraces.stacktrace()[1].func)] - 1])), remove(set, Exact(1)))
+    not(map(x -> Base.invokelatest(x, set), [one, two, three, four]))
 end
 
 function nine(set::Exact)::Bool
-    Base.invokelatest(eval(Meta.parse(nums_to_number_words[number_words_to_nums[string(StackTraces.stacktrace()[1].func)] - 1])), remove(set, Exact(1)))
+    not(map(x -> Base.invokelatest(x, set), [one, two, three, four]))
 end
 
 function ten(set::Exact)::Bool
-    Base.invokelatest(eval(Meta.parse(nums_to_number_words[number_words_to_nums[string(StackTraces.stacktrace()[1].func)] - 1])), remove(set, Exact(1)))
+    not(map(x -> Base.invokelatest(x, set), [one, two, three, four]))
 end
 
 # ANS
@@ -68,9 +68,41 @@ function ten(set::Blur)::Bool
 end
 
 function list_syntax_next(word::String)::String 
-    label(add(meaning(word), Exact(1)))
+    if word == "one"
+    return two
+elseif word == "two"
+    return three
+elseif word == "three"
+    return four
+elseif word == "four"
+    return five
+elseif word == "five"
+    return six
+elseif word == "six"
+    return seven
+elseif word == "seven"
+    return eight
+elseif word == "eight"
+    return nine
+elseif word == "nine"
+    return ten
+end
+
 end
 
 function represent_unknown(set::NumberRep, label::Union{String, CountRep})::NumberRep
+    if !(set isa Unknown)
+    set
+elseif set.value <= parallel_individuation_limit 
     Exact(set.value)
+elseif label isa String 
+    set
+else # if label isa CountRep 
+    if (label isa VerbalCount && !label.foreign && !label.reordered && label.one_to_one) || (label isa VerbalCountWithCP && label.one_to_one)
+        Blur(set.value)
+    else
+        set
+    end
+end
+
 end

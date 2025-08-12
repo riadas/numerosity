@@ -6,6 +6,10 @@ abstract type CountRep end
 global parallel_individuation_limit = 4
 global ANS_ratio = 3/2
 
+struct NumberWord 
+    value::Int
+end
+
 struct Exact <: NumberRep
     value::Int
 end
@@ -52,6 +56,16 @@ struct LabeledCompare <: Task
     output::Vector{NumberRep}
 end 
 
+struct UnitAdd <: Task 
+    input::NumberRep
+    output::NumberRep
+end
+
+struct More <: Task 
+    input::Tuple{NumberWord, NumberWord}
+    output::NumberWord
+end
+
 max_num = 10
 number_words_to_nums = Dict([
     "one" => 1,
@@ -73,9 +87,13 @@ nums_to_number_words = Dict(map(p -> p[2] => p[1], collect(number_words_to_nums)
 VerbalCount(value::Int) = VerbalCount(value, false, false, true)
 VerbalCountWithCP(value::Int) = VerbalCountWithCP(value, false, false, true)
 
+NumberWord(x::String) = NumberWord(number_words_to_nums[x])
+
 GiveN(input::String) = GiveN(input, Exact(number_words_to_nums[input]))
 HowMany(input::NumberRep) = HowMany(input, first(filter(x -> last(x) == input.value, collect(number_words_to_nums))[1]))
 Compare(input::Tuple{NumberRep, NumberRep}) = Compare(input, input[1].value > input[2].value ? [input[1]] : input[1].value == input[2].value ? [input...] : [input[2]])
+UnitAdd(input::NumberRep) = UnitAdd(input, Exact(input.value))
+More(input::Tuple{NumberWord, NumberWord}) = More(input, input[1].value > input[2].value ? input[1] : input[2])
 
 # comparisons within a core number system: Exact
 Base.isless(x::Exact, y::Exact) = x.value < y.value
@@ -100,6 +118,11 @@ Base.isgreater(x::Blur, y::Exact) = sample([false, true])
 Base.string(x::Exact) = """< $(join(map(i -> "*", 1:x.value), " ")) >"""
 Base.string(x::Blur) = """? $(join(map(i -> "*", 1:x.value), " ")) ?"""
 Base.string(x::Unknown) = """??? ($(x.value)) ???"""
+
+# number word comparisons: initially, 
+Base.isless(x::NumberWord, y::NumberWord) = x.value > parallel_individuation_limit && y.value > parallel_individuation_limit ? sample([false, true]) : x.value < y.value
+Base.isequal(x::NumberWord, y::NumberWord) = x.value == y.value
+Base.isgreater(x::NumberWord, y::NumberWord) = x.value > parallel_individuation_limit && y.value > parallel_individuation_limit ? sample([false, true]) : x.value > y.value
 
 function not(x::Bool)
     !x
@@ -197,22 +220,6 @@ function compare(sets::Tuple{NumberRep, NumberRep}, prob=false)
     end
 end
 
-function represent_unknown(set::NumberRep, label::Union{String, CountRep})::NumberRep
-    if !(set isa Unknown)
-        set
-    elseif set.value <= parallel_individuation_limit 
-        Exact(set.value)
-    elseif label isa String 
-        set
-    else # if label isa CountRep 
-        if (label isa VerbalCount && !label.foreign && !label.reordered && label.one_to_one) || (label isa VerbalCountWithCP && label.one_to_one)
-            Blur(set.value)
-        else
-            set
-        end
-    end
-end
-
 function labeled_compare(labeled_sets::Tuple{Tuple{NumberRep, NumberRep}, Tuple{Union{String, CountRep}, Union{String, CountRep}}}, prob=false)
     sets = labeled_sets[1]
     labels = labeled_sets[2]
@@ -259,6 +266,50 @@ function labeled_compare(labeled_sets::Tuple{Tuple{NumberRep, NumberRep}, Tuple{
         end        
 
     end
+end
+
+function unit_add(set::NumberRep, prob=false)
+    if !prob 
+        sample([nums_to_number_words[set.value + 1], nums_to_number_words[set.value + 2]])
+    else
+        0.5
+    end
+end
+
+# TODO: make this depend on the smaller words learned
+function more(words::Tuple{NumberWord, NumberWord}, prob=false)
+    word1 = words[1]
+    word2 = words[2]
+
+    if !prob 
+        if Base.invokelatest(Base.isless, word1, word2)
+            word2
+        else
+            word1
+        end
+    else
+        xs = []
+        for _ in 1:100
+            push!(xs, Base.invokelatest(Base.isless, word1, word2))
+        end
+
+        unique!(xs)
+        if length(xs) == 1 
+            1.0
+        else
+            0.5
+        end
+    end
+end
+
+# how many
+function count_passive(x::NumberRep)
+    map(a -> nums_to_number_words[a], 1:x.value)
+end
+
+# give n
+function count_active(x::NumberRep)
+    map(a -> nums_to_number_words[a], 1:x.value)
 end
 
 function evaluate(task)

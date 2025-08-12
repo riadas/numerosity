@@ -5,9 +5,11 @@ using Combinatorics
 
 global scale = 100000000000000000000000000000000000000000000000 # 0.000000001
 
-global alpha_num_defined = 0.00000000000000000000000000000000000000000000000000000000000001
-global alpha_full_knower_compression = 0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
-global alpha_ANS_reconciled = 0.000000000000001
+global alpha_num_defined = 0.00000000000000000000000000000000000000000000000000000000001
+global alpha_full_knower_compression = 0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+global alpha_count_active_compression = 0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001 # TODO
+global alpha_count_passive_compression = 0.000000000000000000000000000000000000001 # TODO 
+global alpha_ANS_reconciled = 0.000000000000000001
 global alpha_represent_unknown_def = 0.9
 global alpha_parallel_individuation_limit = 0.97
 
@@ -17,10 +19,16 @@ function compute_prior(spec_name)
     
     prob = prob * alpha_num_defined^(length(defined_subset_numbers))
 
-    if full_knower_compression 
+    if full_knower_compression == "full_knower_compression"
         prob = prob * alpha_full_knower_compression
-    else
-        prob = prob * (1 - alpha_full_knower_compression)
+    elseif full_knower_compression == "count_active"
+        prob = prob * alpha_count_active_compression
+    elseif full_knower_compression == "count_passive"
+        prob = prob * alpha_count_passive_compression
+    else 
+        # println("huh")
+        # println((1 - alpha_full_knower_compression - alpha_count_active_compression - alpha_count_passive_compression))
+        prob = prob * (1 - alpha_full_knower_compression - alpha_count_active_compression - alpha_count_passive_compression)
     end
 
     if ANS_reconciled 
@@ -57,7 +65,7 @@ end
 
 # generate all combinations
 defined_exact_subset = [[], collect(combinations(1:4))...] # collect(combinations(1:max_num)) # 1:4
-raw_specs = collect(Iterators.product(defined_exact_subset, [true, false], [true, false], ["represent_unknown_base_definition", "represent_unknown_intermediate_definition"], [3, 4]))
+raw_specs = collect(Iterators.product(defined_exact_subset, ["none", "count_passive", "count_active", "full_knower_compression"], [true, false], ["represent_unknown_base_definition", "represent_unknown_intermediate_definition"], [3, 4]))
 
 # default spec
 default_spec = Dict([
@@ -90,12 +98,14 @@ default_spec = Dict([
     "list_syntax_next_nine" => "nine",
     "list_syntax_next_ten" => "ten",
 
-    "full_knower_compression" => false, 
+    "full_knower_compression" => "none", 
     "ANS_reconciled" => false,
 
     "parallel_individuation_limit" => 3,
     "represent_unknown_definition" => "represent_unknown_base_definition",
 
+    "unit_add" => "unit_add_base",
+    "give_n_definition" => "give_n_standard_definition", # give_n_passive_count_definition
 ])
 
 specs = []
@@ -107,20 +117,32 @@ for raw_spec in raw_specs
 
     defined_subset_numbers, full_knower_compression, ANS_reconciled, represent_unknown, parallel_individuation_lim = raw_spec
 
-    if length(intersect([1, 2, 3], defined_subset_numbers)) != 3 && full_knower_compression || !full_knower_compression && ANS_reconciled
+    if length(intersect([1, 2, 3], defined_subset_numbers)) != 3 && full_knower_compression != "none" || full_knower_compression == "none" && ANS_reconciled
         continue
     end
 
     spec["parallel_individuation_limit"] = parallel_individuation_lim
+    spec["full_knower_compression"] = full_knower_compression
 
-    if full_knower_compression 
-        spec["full_knower_compression"] = true
+    if full_knower_compression == "full_knower_compression"
         spec["one_definition"] = "set.value == 1"
         for i in 2:max_num 
             spec["$(nums_to_number_words[i])_definition"] = compressed_exact_definition
         end
         spec["represent_unknown_definition"] = "represent_unknown_final_definition"
-    else
+        spec["unit_add"] = "unit_add_final"
+    elseif full_knower_compression == "count_active"
+        for i in 1:max_num 
+            spec["$(nums_to_number_words[i])_definition"] = "set.value == number_words_to_nums[count_active(Exact(($i)))[end]]"
+        end
+        spec["represent_unknown_definition"] = represent_unknown
+    elseif full_knower_compression == "count_passive"
+        for i in 1:max_num 
+            spec["$(nums_to_number_words[i])_definition"] = "set.value == number_words_to_nums[count_passive(Exact(($i)))[end]]"
+        end
+        spec["give_n_definition"] = "give_n_passive_count_definition"
+        spec["represent_unknown_definition"] = represent_unknown
+    else # full_knower_compression == "none"
         undefined_subset_numbers = filter(x -> !(x in defined_subset_numbers), 1:max_num)
         undefined_definition_list = "[$(join(map(x -> nums_to_number_words[x], defined_subset_numbers), ", "))]"
         undefined_definition = "not(map(x -> Base.invokelatest(x, set), $(undefined_definition_list)))"
@@ -146,15 +168,18 @@ for raw_spec in raw_specs
 end
 
 intervened_spec_names = [
-    [[], false, false, "represent_unknown_base_definition", 3],
-    [[], false, false, "represent_unknown_intermediate_definition", 3],
-    [[], false, false, "represent_unknown_intermediate_definition", 4],
-    [[1], false, false, "represent_unknown_intermediate_definition", 4],
-    [[1, 2], false, false, "represent_unknown_intermediate_definition", 4],
-    [[1, 2, 3], false, false, "represent_unknown_intermediate_definition", 4],
+    [[], "none", false, "represent_unknown_base_definition", 3],
+    [[], "none", false, "represent_unknown_intermediate_definition", 3],
+    [[], "none", false, "represent_unknown_intermediate_definition", 4],
+    [[1], "none", false, "represent_unknown_intermediate_definition", 4],
+    [[1, 2], "none", false, "represent_unknown_intermediate_definition", 4],
+    [[1, 2, 3], "none", false, "represent_unknown_intermediate_definition", 4],
+    [[1, 2, 3], "count_passive", false, "represent_unknown_intermediate_definition", 4],
+    [[1, 2, 3], "count_active", false, "represent_unknown_intermediate_definition", 4],
+    [[1, 2, 3], "count_active", true, "represent_unknown_intermediate_definition", 4],
     # [[1, 2, 3, 4], false, false],
-    [[1, 2, 3], true, false, "represent_unknown_base_definition", 3],
-    [[1, 2, 3], true, true, "represent_unknown_base_definition", 3]
+    # [[1, 2, 3], "full_knower_compression", false, "represent_unknown_base_definition", 3],
+    [[1, 2, 3], "full_knower_compression", true, "represent_unknown_base_definition", 3]
 ]
 intervened_spec_names = map(x -> replace(string(x), "Any[[" => "Any[Any["), intervened_spec_names)
 # specs = map(name -> specs[findall(x -> x == name, spec_names)[1]], intervened_spec_names)
@@ -173,9 +198,12 @@ intervened_spec_names_pretty = [
     "one-knower, parallel indiv. limit=4",
     "two-knower, parallel indiv. limit=4",
     "three-knower, parallel indiv. limit=4",
+    "passive CP induction, ANS unreconciled",
+    "active CP induction, ANS unreconciled",
+    "active CP induction, ANS reconciled",
     # "four-knower",
-    "full-knower, ANS unreconciled",
-    "full-knower, ANS reconciled",
+    # "full-knower, ANS unreconciled",
+    "full-knower, ANS reconciled (exact unit difference learned)",
 ]
 spec_names_pretty = Dict(map(x -> x => "", spec_names))
 for i in 1:length(intervened_spec_names)
@@ -224,10 +252,16 @@ dataset = Dict([
 
     # labeled_compare_3_4_no_count => 1,
     labeled_compare_3_4_correct_count => 1,
+
+    more_1 => 1, 
+    more_2 => 1,
+
+    unit_add_1 => 1, 
+    unit_add_2 => 1,
 ])
 
 println("length(specs): $(length(specs))")
-max_repeats = 13
+max_repeats = 12
 single_repeat_results = Dict()
 results = Dict()
 for repeats in 1:max_repeats 
@@ -239,7 +273,7 @@ for repeats in 1:max_repeats
 
         # construct and load language
         language = generate_language(spec)
-        open("metalanguage/intermediate_outputs/current_language.jl", "w+") do f 
+        open("metalanguage_enriched/intermediate_outputs/current_language.jl", "w+") do f 
             write(f, language)
         end
         include("intermediate_outputs/current_language.jl")
@@ -256,6 +290,9 @@ for repeats in 1:max_repeats
 
         prior, likelihood_single_repeat = single_repeat_results[spec_name]
         results[repeats][spec_name] = prior * (likelihood_single_repeat)^repeats
+        println("prior: $(prior)")
+        println("likelihood: $((likelihood_single_repeat))")
+        println("posterior: $(prior * (likelihood_single_repeat)^repeats)")
     end
 end
 

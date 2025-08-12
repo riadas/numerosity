@@ -46,6 +46,14 @@ labeled_compare_4_6_correct_count = LabeledCompare(((Unknown(4), Unknown(6)), (V
 labeled_compare_3_4_no_count = LabeledCompare(((Unknown(3), Unknown(4)), ("three", "four")), NumberRep[Unknown(4)])
 labeled_compare_3_4_correct_count = LabeledCompare(((Unknown(3), Unknown(4)), (VerbalCount(3), VerbalCount(4))), NumberRep[Unknown(4)])
 
+# more tasks 
+more_1 = More((NumberWord(5), NumberWord(7)))
+more_2 = More((NumberWord(6), NumberWord(9)))
+
+# unit add tasks
+unit_add_1 = UnitAdd(Exact(5))
+unit_add_2 = UnitAdd(Exact(8))
+
 tasks = [
     give_1, # = GiveN("one")
     give_2, # = GiveN("two")
@@ -88,4 +96,10 @@ tasks = [
 
     labeled_compare_3_4_no_count,
     labeled_compare_3_4_correct_count,
+
+    more_1, 
+    more_2,
+
+    unit_add_1,
+    unit_add_2
 ]
