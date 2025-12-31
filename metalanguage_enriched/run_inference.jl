@@ -7,9 +7,9 @@ global scale = 100000000000000000000000000000000000000000000000 # 0.000000001
 
 global alpha_num_defined = 0.00000000000000000000000000000000000000000000000000000000001
 global alpha_full_knower_compression = 0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
-global alpha_count_active_compression = 0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001 # TODO
+global alpha_count_active_compression = 0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001 # TODO
 global alpha_count_passive_compression = 0.000000000000000000000000000000000000001 # TODO 
-global alpha_ANS_reconciled = 0.000000000000000001
+global alpha_ANS_reconciled = 0.00000000000000000000001
 global alpha_represent_unknown_def = 0.9
 global alpha_parallel_individuation_limit = 0.97
 
@@ -161,6 +161,9 @@ for raw_spec in raw_specs
         for k in filter(x -> occursin("definition_blur", x), collect(keys(spec)))
             spec[k] = ANS_blur_definition
         end
+        if full_knower_compression == "count_active" && spec["represent_unknown_definition"] == "represent_unknown_intermediate_definition"
+            spec["represent_unknown_definition"] = "represent_unknown_final_definition"
+        end
     end
 
     push!(specs, spec)
@@ -176,14 +179,14 @@ intervened_spec_names = [
     [[1, 2, 3], "none", false, "represent_unknown_intermediate_definition", 4],
     [[1, 2, 3], "count_passive", false, "represent_unknown_intermediate_definition", 4],
     [[1, 2, 3], "count_active", false, "represent_unknown_intermediate_definition", 4],
-    [[1, 2, 3], "count_active", true, "represent_unknown_intermediate_definition", 4],
+    [[1, 2, 3], "count_active", true, "represent_unknown_intermediate_definition", 3],
     # [[1, 2, 3, 4], false, false],
-    # [[1, 2, 3], "full_knower_compression", false, "represent_unknown_base_definition", 3],
+    [[1, 2, 3], "full_knower_compression", false, "represent_unknown_base_definition", 3],
     [[1, 2, 3], "full_knower_compression", true, "represent_unknown_base_definition", 3]
 ]
 intervened_spec_names = map(x -> replace(string(x), "Any[[" => "Any[Any["), intervened_spec_names)
-# specs = map(name -> specs[findall(x -> x == name, spec_names)[1]], intervened_spec_names)
-# spec_names = intervened_spec_names
+specs = map(name -> specs[findall(x -> x == name, spec_names)[1]], intervened_spec_names)
+spec_names = intervened_spec_names
 
 @show length(specs)
 @show length(spec_names)
@@ -202,7 +205,7 @@ intervened_spec_names_pretty = [
     "active CP induction, ANS unreconciled",
     "active CP induction, ANS reconciled",
     # "four-knower",
-    # "full-knower, ANS unreconciled",
+    "full-knower, ANS unreconciled",
     "full-knower, ANS reconciled (exact unit difference learned)",
 ]
 spec_names_pretty = Dict(map(x -> x => "", spec_names))
@@ -238,7 +241,7 @@ dataset = Dict([
     how_many_7_blur => 1, #  = HowMany(Blur(7))
     how_many_8_blur => 1, #  = HowMany(Blur(8))
     how_many_9_blur => 1, #  = HowMany(Blur(9))
-    how_many_10_blur => 1, #  = HowMany(Blur(10))
+    how_many_10_blur => 2, #  = HowMany(Blur(10))
 
     compare_exact => 1,
     compare_blur => 1,
@@ -257,86 +260,86 @@ dataset = Dict([
     more_2 => 1,
 
     unit_add_1 => 1, 
-    unit_add_2 => 1,
+    unit_add_2 => 2,
 ])
 
-println("length(specs): $(length(specs))")
-max_repeats = 12
-single_repeat_results = Dict()
-results = Dict()
-for repeats in 1:max_repeats 
-    results[repeats] = Dict()
-    for i in 1:length(specs)
-        println("repeats = $(repeats), spec index = $(i)")
-        spec = specs[i]
-        spec_name = spec_names[i]
+# println("length(specs): $(length(specs))")
+# max_repeats = 20
+# single_repeat_results = Dict()
+# results = Dict()
+# for repeats in 1:max_repeats 
+#     results[repeats] = Dict()
+#     for i in 1:length(specs)
+#         println("repeats = $(repeats), spec index = $(i)")
+#         spec = specs[i]
+#         spec_name = spec_names[i]
 
-        # construct and load language
-        language = generate_language(spec)
-        open("metalanguage_enriched/intermediate_outputs/current_language.jl", "w+") do f 
-            write(f, language)
-        end
-        include("intermediate_outputs/current_language.jl")
+#         # construct and load language
+#         language = generate_language(spec)
+#         open("metalanguage_enriched/intermediate_outputs/current_language.jl", "w+") do f 
+#             write(f, language)
+#         end
+#         include("intermediate_outputs/current_language.jl")
 
-        if repeats == 1 
-            # compute prior
-            prior = compute_prior(spec_name)
+#         if repeats == 1 
+#             # compute prior
+#             prior = compute_prior(spec_name)
 
-            # evaluate language on tasks
-            likelihood = (compute_likelihood(dataset))^repeats
+#             # evaluate language on tasks
+#             likelihood = (compute_likelihood(dataset))^repeats
 
-            single_repeat_results[spec_name] = (prior, likelihood)
-        end
+#             single_repeat_results[spec_name] = (prior, likelihood)
+#         end
 
-        prior, likelihood_single_repeat = single_repeat_results[spec_name]
-        results[repeats][spec_name] = prior * (likelihood_single_repeat)^repeats
-        println("prior: $(prior)")
-        println("likelihood: $((likelihood_single_repeat))")
-        println("posterior: $(prior * (likelihood_single_repeat)^repeats)")
-    end
-end
-
-# TODO: plot results
-for repeats in 1:max_repeats
-    println("REPEATS: $(repeats)")
-    i = findall(name -> results[repeats][name] == maximum(map(n -> results[repeats][n], spec_names)),  spec_names)[1]
-    map_spec_name = spec_names[i]
-    println(map_spec_name)
-end
-
-sums = map(r -> sum(collect(values(results[r]))), 1:max_repeats)
-
-# # pretty_spec_names = ["chance language, no impos", "chance language, with impos", "minimal language, i.e. propositional logic", "modal language, i.e. first-order logic"]
-
-p = plot(1:max_repeats, collect(1:max_repeats) * 1/max_repeats, color="white", label=false)
-for i in 1:length(spec_names)
-    spec_name = spec_names[i]
-    # println(spec_name)
-    # println("\tprior: $(priors[i])")
-    # println("\tlikelihood: $(likelihoods[i])")
-    
-    p = plot!(collect(1:max_repeats), map(r -> results[r][spec_name], 1:max_repeats) ./ sums, legend=false, label="") # legend=:outerbottom 
-    
-end
-
-sort!(spec_names, by=x -> x in intervened_spec_names ? findall(y -> y == x, intervened_spec_names)[1] : 10)
-
-for i in 1:length(spec_names)
-    spec_name = spec_names[i]
-    # println("\tprior: $(priors[i])")
-    # println("\tlikelihood: $(likelihoods[i])")
-    if spec_name in intervened_spec_names
-        println(spec_name)
-        p = plot!(collect(1:max_repeats), map(r -> results[r][spec_name], 1:max_repeats) ./ sums, label = "$(spec_names_pretty[spec_name])", legend=:outerbottom, xticks=0:1:max_repeats) # legend=:outerbottom 
-    end
-end
-
-# for spec_name in intervened_spec_names
-#     p = plot!(collect(1:max_repeats), map(r -> results[r][spec_name], 1:max_repeats) ./ sums, label = "$(spec_names_pretty[spec_name])", legend=:outerbottom) # legend=:outerbottom 
+#         prior, likelihood_single_repeat = single_repeat_results[spec_name]
+#         results[repeats][spec_name] = prior * (likelihood_single_repeat)^repeats
+#         println("prior: $(prior)")
+#         println("likelihood: $((likelihood_single_repeat))")
+#         println("posterior: $(prior * (likelihood_single_repeat)^repeats)")
+#     end
 # end
 
-xlabel!("Training Data Volume", xguidefontsize=9)
-ylabel!("Proportion", yguidefontsize=9)
-title!("Relative Proportions of Number LoTs", titlefontsize=10)
+# # TODO: plot results
+# for repeats in 1:max_repeats
+#     println("REPEATS: $(repeats)")
+#     i = findall(name -> results[repeats][name] == maximum(map(n -> results[repeats][n], spec_names)),  spec_names)[1]
+#     map_spec_name = spec_names[i]
+#     println(map_spec_name)
+# end
 
-p
+# sums = map(r -> sum(collect(values(results[r]))), 1:max_repeats)
+
+# # # pretty_spec_names = ["chance language, no impos", "chance language, with impos", "minimal language, i.e. propositional logic", "modal language, i.e. first-order logic"]
+
+# p = plot(1:max_repeats, collect(1:max_repeats) * 1/max_repeats, color="white", label=false)
+# for i in 1:length(spec_names)
+#     spec_name = spec_names[i]
+#     # println(spec_name)
+#     # println("\tprior: $(priors[i])")
+#     # println("\tlikelihood: $(likelihoods[i])")
+    
+#     p = plot!(collect(1:max_repeats), map(r -> results[r][spec_name], 1:max_repeats) ./ sums, legend=false, label="") # legend=:outerbottom 
+    
+# end
+
+# sort!(spec_names, by=x -> x in intervened_spec_names ? findall(y -> y == x, intervened_spec_names)[1] : 10)
+
+# for i in 1:length(spec_names)
+#     spec_name = spec_names[i]
+#     # println("\tprior: $(priors[i])")
+#     # println("\tlikelihood: $(likelihoods[i])")
+#     if spec_name in intervened_spec_names
+#         println(spec_name)
+#         p = plot!(collect(1:max_repeats), map(r -> results[r][spec_name], 1:max_repeats) ./ sums, label = "$(spec_names_pretty[spec_name])", legend=:outerbottom, xticks=0:1:max_repeats) # legend=:outerbottom 
+#     end
+# end
+
+# # for spec_name in intervened_spec_names
+# #     p = plot!(collect(1:max_repeats), map(r -> results[r][spec_name], 1:max_repeats) ./ sums, label = "$(spec_names_pretty[spec_name])", legend=:outerbottom) # legend=:outerbottom 
+# # end
+
+# xlabel!("Training Data Volume", xguidefontsize=9)
+# ylabel!("Proportion", yguidefontsize=9)
+# title!("Relative Proportions of Number LoTs", titlefontsize=10)
+
+# p
