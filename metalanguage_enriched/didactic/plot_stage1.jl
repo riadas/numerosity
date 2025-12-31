@@ -73,10 +73,10 @@ dataset = Dict([
     "how_many_7_blur" => 1, #  = HowMany(Blur(7))
     "how_many_8_blur" => 1, #  = HowMany(Blur(8))
     "how_many_9_blur" => 1, #  = HowMany(Blur(9))
-    "how_many_10_blur" => 2, #  = HowMany(Blur(10))
+    "how_many_10_blur" => 1, #  = HowMany(Blur(10))
 
-    "more_1" => 2, 
-    "more_2" => 2,
+    "more_1" => 1, 
+    "more_2" => 1,
 
     "unit_add_1" => 5, 
     "unit_add_2" => 5,
@@ -175,17 +175,22 @@ function compute_utility(language_index, t)
     gamma_c*t*accuracies[language_index] - cost_c *(memory_costs[language_index] + computational_costs[language_index] - 0.50)
 end
 
-gamma_c = 2.0
-cost_c = 0.01
-x_vals = collect(0:time_step_unit:num_time_steps*time_step_unit * 1/10)
+gamma_c = 1.2
+cost_c = 0.008
+x_vals = collect(0:time_step_unit:num_time_steps*time_step_unit)
 line_plot = nothing 
 yvals_dict = Dict()
+global max_yvals = 0.0
+global min_yvals = 0.0
 for i in 1:length(language_names)
     y_vals = map(x -> gamma_c*x*accuracies[i] - cost_c *(memory_costs[i] + computational_costs[i] - 0.50), x_vals)
+    global max_yvals = maximum([max_yvals, maximum(y_vals)])
+    global min_yvals = minimum([min_yvals, minimum(y_vals)])
+
     if isnothing(line_plot)
-        global line_plot = plot(x_vals, y_vals, size=(600, 450), xlims=(0.0, 0.01), ylims=(-0.0085, 0.0115), legend=:bottomright, label=join(split(language_names_pretty[i], "_")[2:end], " "), color = collect(palette(:tab10))[i], title="Utility vs. Cost Tolerance (Time)", xlabel="Cost Tolerance (Time)", ylabel="Utility")
+        global line_plot = plot(x_vals, y_vals, size=(600, 450), xlims=(0.0, x_vals[end]), ylims=(min_yvals, max_yvals), legend=:bottomright, label=join(split(language_names_pretty[i], "_")[2:end], " "), color = collect(palette(:tab10))[i], title="Utility vs. Cost Tolerance (Time)", xlabel="Cost Tolerance (Time)", ylabel="Utility")
     else
-        global line_plot = plot(line_plot, x_vals, y_vals, size=(600, 450),  xlims=(0.0, 0.01), ylims=(-0.0085, 0.0115), legend=:bottomright, label=join(split(language_names_pretty[i], "_")[2:end], " "), color = collect(palette(:tab10))[i], title="Utility vs. Cost Tolerance (Time)",  xlabel="Cost Tolerance (Time)", ylabel="Utility")
+        global line_plot = plot(line_plot, x_vals, y_vals, size=(600, 450),  xlims=(0.0, x_vals[end]), ylims=(min_yvals, max_yvals), legend=:bottomright, label=join(split(language_names_pretty[i], "_")[2:end], " "), color = collect(palette(:tab10))[i], title="Utility vs. Cost Tolerance (Time)",  xlabel="Cost Tolerance (Time)", ylabel="Utility")
     end
     yvals_dict[i] = y_vals
 end
