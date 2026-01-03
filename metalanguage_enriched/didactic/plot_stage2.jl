@@ -68,19 +68,133 @@ dataset = Dict([
     "how_many_9" => 1, #  = HowMany(Exact(9))
     "how_many_10" => 1, #  = HowMany(Exact(10))
 
-    "how_many_5_blur" => 1, #  = HowMany(Blur(5))
-    "how_many_6_blur" => 1, #  = HowMany(Blur(6))
-    "how_many_7_blur" => 1, #  = HowMany(Blur(7))
+    "how_many_5_blur" => 2, #  = HowMany(Blur(5))
+    "how_many_6_blur" => 2, #  = HowMany(Blur(6))
+    "how_many_7_blur" => 2, #  = HowMany(Blur(7))
     "how_many_8_blur" => 1, #  = HowMany(Blur(8))
     "how_many_9_blur" => 1, #  = HowMany(Blur(9))
-    "how_many_10_blur" => 5, #  = HowMany(Blur(10))
+    "how_many_10_blur" => 1, #  = HowMany(Blur(10))
 
-    "more_1" => 1, 
-    "more_2" => 1,
+    "more_1" => 2, 
+    "more_2" => 2,
 
     "unit_add_1" => 5, 
     "unit_add_2" => 5,
 ])
+
+test_name_to_task_dict = Dict([
+    "standard" => dataset,
+])
+
+function plot_individual_task_distribution(test_name_="standard")
+    task_dict = test_name_to_task_dict[test_name_]
+
+    task_count_dict = Dict([
+        "c_More" => 0,
+        "d_Unit Addition" => 0,
+    ])
+
+    for k in keys(task_dict)
+        if occursin("give_", k) || occursin("how_many_", k) && !occursin("blur", k)
+            num = parse(Int, split(k, "_")[end])
+            task_name = "$(num < 10 ? string(0, num) : string(num))_Give $(num)"
+            if task_name in keys(task_count_dict)
+                task_count_dict[task_name] += task_dict[k]
+            else
+                task_count_dict[task_name] = task_dict[k]
+            end
+        elseif occursin("blur", k)
+            num = parse(Int, split(k, "_")[end - 1])
+            task_count_dict["b$(num < 10 ? string(0, num) : string(num))_Fast Dots $(num)"] = task_dict[k]
+        elseif occursin("more", k)
+            task_count_dict["c_More"] += task_dict[k]
+        elseif occursin("unit", k)
+            task_count_dict["d_Unit Addition"] += task_dict[k]
+        end
+    end
+
+    colors = collect(palette(:tab10))[2:5] # 1-4
+    push!(colors, reverse(collect(palette(:Purples_8))[1:6])...) # 5-10
+    push!(colors, collect(palette(:tab10))[7]) # fast dots 5
+    # push!(colors, collect(palette(:tab20b))[end]) # fast dots 6
+    push!(colors, reverse(collect(palette(:RdPu_9))[1:5])...)
+    # push!(colors, collect(palette([pink, lightpink], 7))[2:end-1]...) # fast dots 6-10
+    # push!(colors, collect(palette(:valentine))[2:end]...) # fast dots 6-10
+    # push!(colors, collect(palette(:darkterrain))[end-4:end]...) # fast dots 6-10
+    push!(colors, collect(palette(:tab20))[14]) # more 
+    push!(colors, collect(palette(:tab20))[15]) # unit add
+
+    task_group_names = sort(collect(keys(task_count_dict)))
+    counts = map(group_name -> task_count_dict[group_name], task_group_names)
+    proportions = counts ./ sum(counts)
+    println(map(x -> split(x, "_")[end], task_group_names))
+    curriculum_plot = bar(xticks=(1:length(task_group_names), map(x -> split(x, "_")[end], task_group_names)), proportions, color=colors, size=(640, 525), xrotation=305, bar_width=1, xlabel="Task Type", ylabel="Proportion", legend=false, titlefontsize=13, xtickfontsize=9, xguidefontsize=11, yguidefontsize=10, title="Task Distribution", ylims=(0.0, round(mean([maximum(proportions), maximum(proportions) + 0.1]), digits=1)))
+    curriculum_plot
+end
+
+function plot_grouped_task_distribution(test_name_="standard")
+    task_dict = test_name_to_task_dict[test_name_]
+    task_count_dict = Dict([
+        "1_Give N" => 0,
+        "2_Fast Dots" => 0,
+        "3_More" => 0,
+        "4_Unit Addition" => 0,
+    ])
+
+    original_colors = collect(palette(:tab20))
+    new_colors = [
+        original_colors[3],
+        original_colors[13],
+        original_colors[14],
+        original_colors[15],
+    ]
+
+    for k in keys(task_dict)
+        if occursin("give", k)
+            task_count_dict["1_Give N"] += task_dict[k]
+        elseif occursin("blur", k)
+            task_count_dict["2_Fast Dots"] += task_dict[k]
+        elseif occursin("more", k)
+            task_count_dict["3_More"] += task_dict[k]
+        elseif occursin("unit", k)
+            task_count_dict["4_Unit Addition"] += task_dict[k]
+        end
+    end
+
+    task_group_names = sort(collect(keys(task_count_dict)))
+    counts = map(group_name -> task_count_dict[group_name], task_group_names)
+    proportions = counts ./ sum(counts)
+    println(map(x -> split(x, "_")[end], task_group_names))
+    curriculum_plot = bar(xticks=(1:length(task_group_names), map(x -> split(x, "_")[end], task_group_names)), color=new_colors, proportions, size=(640, 525), xrotation=305, bar_width=1, xlabel="Task Category", ylabel="Proportion", legend=false, titlefontsize=11, xtickfontsize=7, xguidefontsize=10, yguidefontsize=10, title="Task Category Distribution", ylims=(0.0, 1.0))
+    curriculum_plot
+end
+
+
+individual_dist_plot = plot_individual_task_distribution()
+grouped_dist_plot = plot_grouped_task_distribution()
+plot(individual_dist_plot, grouped_dist_plot, layout=(1, 2))
+
+
+# function plot_all_curricula(subset=false)
+#     if subset 
+#         task_group_dict = Dict([
+#             "3_dividing_physically_grounded_understanding" => ["is_a_number_task"],
+#             "4_arithmetic_memorization" => ["arithmetic_task", "subtraction_task", "compare_task", "compare_task_bad"],
+#         ])
+#         colors = [
+#             collect(palette(:tab10))[4],
+#             collect(palette(:tab10))[8],
+#         ]
+#     else
+#         task_group_dict = task_groups
+#         colors = curriculum_plot_colors
+#     end
+#     good_curriculum_plot = plot_curriculum("good_curriculum", task_group_dict, colors)
+#     bad_curriculum_plot = plot_curriculum("bad_curriculum", task_group_dict, colors)
+    
+#     scale = subset ? 1 : 2
+#     plot(good_curriculum_plot, bad_curriculum_plot, layout=(1, 2), size=(640 * scale, 525))
+# end
 
 total_tasks = sum(map(k -> dataset[k], [keys(dataset)...]))
 
@@ -357,9 +471,9 @@ for i in 1:length(language_names)
     println(i)
     global dist_ys = map(t -> all_distributions[t][i], 1:length(dist_xs))
     if isnothing(dist_plot)
-        global dist_plot = plot(dist_xs, dist_ys, color=collect(palette(:tab10))[i], label=language_names_pretty[i], legend=:outerbottom, size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time")
+        global dist_plot = plot(dist_xs, dist_ys, color=collect(palette(:tab10))[i], label=language_names_pretty[i], legend=:right, size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time")
     else
-        global dist_plot = plot(dist_plot, dist_xs, dist_ys, color=collect(palette(:tab10))[i], label=language_names_pretty[i], legend=:outerbottom, size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time")
+        global dist_plot = plot(dist_plot, dist_xs, dist_ys, color=collect(palette(:tab10))[i], label=language_names_pretty[i], legend=:right, size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time")
     end
 end
 
@@ -367,4 +481,4 @@ end
 
 # dist_plot
 
-plot(dist_plot, max_lot_plot, layout=(2, 1))
+plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500))
