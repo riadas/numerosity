@@ -46,8 +46,8 @@ language_name_to_spec = Dict(map(i -> language_names[i] => eval(Meta.parse("L$(i
 
 # TASKS
 dataset = Dict([
-    "give_1" => 80, # = GiveN("one") 40 / 80
-    "give_2" => 40, # = GiveN("two") 20 / 40
+    "give_1" => 40, # = GiveN("one") 40 / 80
+    "give_2" => 20, # = GiveN("two") 20 / 40
     "give_3" => 10, # = GiveN("three")
     "give_4" => 5, # = GiveN("four")
     "give_5" => 2, # = GiveN("five")
@@ -197,14 +197,14 @@ plot(individual_dist_plot, grouped_dist_plot, layout=(1, 2))
 # end
 
 total_tasks = sum(map(k -> dataset[k], [keys(dataset)...]))
-cultural_counting_emphasis_small_number = 0.025 # 0.25 / 0.025
-cultural_counting_emphasis_large_number = 0.025 # 0.25 / 0.025
+cultural_counting_emphasis_small_number = 0.25 # 0.25 / 0.025
+cultural_counting_emphasis_large_number = 0.25 # 0.25 / 0.025
 
 function compute_counting_task_proportion(task_dict, cultural_counting_emphasis_small_number, cultural_counting_emphasis_large_number)
     counting_tasks_small_number = sum(map(k -> dataset[k], filter(x -> x in ["give_2", "give_3"], [keys(dataset)...])))
     individual_counting_proportions = map(n -> n < 4 ? 
         cultural_counting_emphasis_small_number * task_dict["give_$(n)"] : 
-        cultural_counting_emphasis_large_number * task_dict["give_$(n)"] * 2/n,
+        cultural_counting_emphasis_large_number * task_dict["give_$(n)"] * 1/n * 0.5,
     2:10) ./ total_tasks
     sum(individual_counting_proportions)
 end
@@ -235,25 +235,57 @@ counting_task_proportion = compute_counting_task_proportion(dataset, cultural_co
 #         # evaluate language on tasks
 #         accuracy = compute_likelihood(single_task_dataset)
 #         if !spec["ANS_reconciled"] && occursin("_blur", task_name)
-#             accuracy = 0.0    
+#             accuracy = 0.1 # 0.0    
 #         end
 #         println(accuracy)
 #         base_accuracies[language_name][task_name] = accuracy
 #     end
 # end
 
-accuracies = []
-for language_name in language_names 
-    overall_accuracy = 0.0
-    for task_name in keys(dataset)
-        task_count = dataset[task_name]
-        base_acc = base_accuracies[language_name][task_name]
-        overall_accuracy += base_acc * task_count
+function compute_accuracies_efficient(dataset, normalized=true)
+    accuracies = []
+    for language_name in language_names 
+        overall_accuracy = 0.0
+        for task_name in keys(dataset)
+            task_count = dataset[task_name]
+            base_acc = base_accuracies[language_name][task_name]
+            if normalized 
+                overall_accuracy += base_acc * task_count
+            else
+                overall_accuracy += log(base_acc) * task_count
+            end
+        end
 
+        if normalized
+            overall_accuracy = overall_accuracy / total_tasks # / total tasks
+        end
+        
+        push!(accuracies, overall_accuracy)
     end
-    overall_accuracy = overall_accuracy / total_tasks
-    push!(accuracies, overall_accuracy)
+
+    # @show accuracies
+    if normalized 
+        accuracies = accuracies .- minimum(accuracies)
+        accuracies = accuracies / maximum(accuracies)
+    else
+        accuracies = accuracies .+ 250 # maximum(accuracies)
+        accuracies = (accuracies / 240)
+    end
+
+    accuracies
 end
+
+# function run_test(test_name_, save_fig_title="")
+#     global test_name = test_name_
+#     params_dict["test_name"] = test_name
+
+#     task_dict = test_name_to_task_dict[test_name]
+#     params_dict["curriculum"] = Dict(map(k -> k => task_dict[k][2], collect(keys(task_dict))))
+
+#     global relate_task_proportion = task_dict["is_a_number_task"][2] / sum(map(k -> task_dict[k][2], [keys(task_dict)...]))
+# end
+
+accuracies = compute_accuracies_efficient(dataset)
 
 # accuracies[1] = 0.0
 
@@ -371,7 +403,7 @@ function distance_between_specs(spec1, spec2, relate_factor=0.0)
             if !(spec1["three_definition"] in ["set.value == 3"])
                 dist = dist * 10
             else
-                dist += 200 - 195.5 * relate_factor # 200 - 199.5 * relate_factor
+                dist += 15 - 15 * relate_factor # 200 - 199.5 * relate_factor
             end
         end
 
@@ -417,10 +449,13 @@ end
 
 
 transition_prob_identity_base = 0.975
-transition_prob_identity_rate = 0.0004 # 0.0003
+transition_prob_identity_rate = 0.004 # 0.0003
 transition_prob_base = 100.0 # 2
 utility_base = 10000000000000.0
 
+
+three_knower_stage_reached = false
+three_knower_stage_intervention_made = false
 relate_factors = []
 max_lot_indexes = [1]
 max_lots = [language_names_pretty[1]]
@@ -429,9 +464,40 @@ curr_distribution[1] = 1.0
 all_distributions = []
 push!(all_distributions, curr_distribution)
 for t in 0:time_step_unit:num_time_steps*time_step_unit
+
+    if three_knower_stage_reached && !three_knower_stage_intervention_made
+        # add intervention 
+        global three_knower_stage_intervention_made = true
+
+        # low number 
+        # dataset["give_1"] += 0
+        # dataset["give_2"] += 7
+        # dataset["give_3"] += 7
+        
+        # high number 
+        dataset["give_4"] += 2
+        dataset["give_5"] += 2 
+        dataset["give_6"] += 2 
+        dataset["give_7"] += 2
+        dataset["give_8"] += 2 
+        dataset["give_9"] += 2 
+        dataset["give_10"] += 2
+
+        # counting context vs. no counting context
+        # global cultural_counting_emphasis_small_number = 0.5
+        global cultural_counting_emphasis_large_number = 0.5
+
+        # recompute accuracies and counting_task_proportion
+        global accuracies = compute_accuracies_efficient(dataset)
+
+        global counting_task_proportion = compute_counting_task_proportion(dataset, cultural_counting_emphasis_small_number, cultural_counting_emphasis_large_number)
+
+    end
+
+
     utility_sum = sum(map(x -> utility_base^(compute_utility(x, t)), 1:length(language_names)))
     
-    relate_factor = t * counting_task_proportion * 1500
+    relate_factor = t * counting_task_proportion * 200
     relate_factor = relate_factor > 1 ? 1 : relate_factor
     push!(relate_factors, relate_factor)
 
@@ -463,6 +529,10 @@ for t in 0:time_step_unit:num_time_steps*time_step_unit
     # end
     push!(all_distributions, curr_distribution)
     println(max_lots[end])
+
+    if max_lots[end] == "three knower" && !three_knower_stage_reached
+        global three_knower_stage_reached = true
+    end
 
 end
 
@@ -508,4 +578,53 @@ end
 
 # plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500))
 
+println("3 knower becomes MAP: $("three knower" in max_lots ? findall(x -> x == "three knower", max_lots)[1] : -1)")
+println("CP knower becomes MAP: $("CP knower" in max_lots ? findall(x -> x == "CP knower", max_lots)[1] : -1)")
+
+println("1 knower becomes MAP: $("three knower" in max_lots ? findall(x -> x == "one knower", max_lots)[1] : -1)")
+# println("CP knower becomes MAP: $("CP knower" in max_lots ? findall(x -> x == "CP knower", max_lots)[1] : -1)")
+
 plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500))
+
+# relate_factor = 0.0
+# distances = []
+# for l1 in language_names 
+#     push!(distances, [])
+#     for l2 in language_names 
+#         l1_spec = language_name_to_spec[l1]
+#         l2_spec = language_name_to_spec[l2]
+#         dist, s = distance_between_specs(l1_spec, l2_spec, relate_factor)
+#         push!(distances[end], dist)
+#     end
+# end
+
+# heatmap_values = distances 
+# heatmap_values_matrix = reshape(vcat(heatmap_values...), (length(language_names), length(language_names)))
+# heatmap(language_names, language_names, heatmap_values_matrix, aspect_ratio=:equal)
+
+# one_knower_arrivals = Dict("slovenian" => 366, "english" => 435, "japanese" => 482)
+# cp_induction_arrivals = Dict("slovenian" => 1543, "english" => 1025, "japanese" => 971)
+
+# x_labels = ["English\nRussian\nSpanish\n(singular-plural)", "Japanese\nChinese\nBasque\n(no singular-plural)", "Slovenian\nArabic\n(singular-dual-plural)"]
+# cp_induction_relative_rates = [0, (cp_induction_arrivals["japanese"] / cp_induction_arrivals["english"]) - 1, cp_induction_arrivals["slovenian"] / cp_induction_arrivals["english"] - 1] * 100
+# CP_induction_rate_plot = bar(x_labels, cp_induction_relative_rates, color = collect(palette(:tab10))[6], size=(600, 525), legend=false, xlabel="Language Category", ylabel="% Change", title="% Arrival Time Change of\nCP Induction", ylims=(-25, 75))
+# annotate!(x_labels[1:1], cp_induction_relative_rates[1:1], map(x -> "$(round(x, digits=1))%", cp_induction_relative_rates[1:1]), :bottom, fontsize=6)
+# annotate!(x_labels[2:2], cp_induction_relative_rates[2:2], map(x -> "$(round(x, digits=1))%", cp_induction_relative_rates[2:2]), :top)
+# annotate!(x_labels[3:end], cp_induction_relative_rates[3:end], map(x -> "$(round(x, digits=1))%", cp_induction_relative_rates[3:end]), :bottom)
+
+# one_knower_relative_rates = [0, (one_knower_arrivals["japanese"] / one_knower_arrivals["english"]) - 1, one_knower_arrivals["slovenian"] / one_knower_arrivals["english"] - 1] * 100
+# one_knower_rate_plot = bar(x_labels, one_knower_relative_rates, color = collect(palette(:tab10))[2], size=(600, 525), legend=false, xlabel="Language Category", ylabel="% Change", title="% Arrival Time Change of\nOne Knower Stage", ylims=(-25, 75))
+# annotate!(x_labels[1:1], one_knower_relative_rates[1:1], map(x -> "$(round(x, digits=1))%", one_knower_relative_rates[1:1]), :bottom)
+# annotate!(x_labels[2:2], one_knower_relative_rates[2:2], map(x -> "$(round(x, digits=1))%", one_knower_relative_rates[2:2]), :bottom)
+# annotate!(x_labels[3:end], one_knower_relative_rates[3:end], map(x -> "$(round(x, digits=1))%", one_knower_relative_rates[3:end]), :top)
+
+# plot(one_knower_rate_plot, CP_induction_rate_plot, layout=(1,2), size=(1000, 500))
+
+# xlabels = ["Baseline", "Low Counting Emphasis", "High Counting Emphasis"]
+# ylabels = [0.25, 0.125, 0.5]
+# count_emphasis_intervention_plot = bar(xlabels, ylabels, ylims=(0.0, 1.0), legend=false, xlabel="Intervention", ylabel="Parameter Value", title="Count Seqence Emphasis Comparison: Parameter Values", titlefontsize=11, xguidefontsize=10, yguidefontsize=10)
+# annotate!(xlabels, ylabels, ylabels, :bottom, annotationfontsize=6)
+
+x = (1 .- [1053, 949, 944, 949] ./ 1106) * 100
+bar(labels, x, legend=false, xtickfontsize=12, xlabel="Intervention Type", ylabel="% Reduction", ytickfontsize=12, yguidefontsize=18, xguidefontsize=18, title="Percent Reduction in CP-Knower Acquisition Time\nvs. Intervention Type", titlefontsize=21, annotationfontsize=1, ylims=(0.0, 20.0), size=(1000, 1000))
+annotate!(labels, x, map(a -> "$(round(a, digits=2))%", x), :bottom)
