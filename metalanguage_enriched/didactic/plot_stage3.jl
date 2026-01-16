@@ -45,7 +45,7 @@ language_name_to_spec = Dict(map(i -> language_names[i] => eval(Meta.parse("L$(i
 
 
 # TASKS
-dataset = Dict([
+english_dataset = Dict([
     "give_1" => 40, # = GiveN("one") 40 / 80
     "give_2" => 20, # = GiveN("two") 20 / 40
     "give_3" => 10, # = GiveN("three")
@@ -82,12 +82,21 @@ dataset = Dict([
     "unit_add_2" => 5,
 ])
 
+slovenian_dataset = deepcopy(english_dataset)
+slovenian_dataset["give_1"] = slovenian_dataset["give_1"] * 2
+slovenian_dataset["give_2"] = slovenian_dataset["give_2"] * 2 
+
+chinese_dataset = deepcopy(english_dataset)
+chinese_dataset["give_1"] = chinese_dataset["give_1"] * 0.8
+
 test_name_to_task_dict = Dict([
-    "standard" => dataset,
+    "english" => (english_dataset, 0.25, 0.25), # cultural_counting_emphasis_small_number, cultural_counting_emphasis_large_number
+    "slovenian" => (slovenian_dataset, 0.05, 0.05),
+    "chinese" => (chinese_dataset, 0.25, 0.25)
 ])
 
-function plot_individual_task_distribution(test_name_="standard")
-    task_dict = test_name_to_task_dict[test_name_]
+function plot_individual_task_distribution(test_name_="english")
+    task_dict, _, _ = test_name_to_task_dict[test_name_]
 
     task_count_dict = Dict([
         "c_More" => 0,
@@ -132,8 +141,8 @@ function plot_individual_task_distribution(test_name_="standard")
     curriculum_plot
 end
 
-function plot_grouped_task_distribution(test_name_="standard")
-    task_dict = test_name_to_task_dict[test_name_]
+function plot_grouped_task_distribution(test_name_="english")
+    task_dict, _, _ = test_name_to_task_dict[test_name_]
     task_count_dict = Dict([
         "1_Give N" => 0,
         "2_Fast Dots" => 0,
@@ -169,39 +178,13 @@ function plot_grouped_task_distribution(test_name_="standard")
     curriculum_plot
 end
 
-
-individual_dist_plot = plot_individual_task_distribution()
-grouped_dist_plot = plot_grouped_task_distribution()
-plot(individual_dist_plot, grouped_dist_plot, layout=(1, 2))
-
-
-# function plot_all_curricula(subset=false)
-#     if subset 
-#         task_group_dict = Dict([
-#             "3_dividing_physically_grounded_understanding" => ["is_a_number_task"],
-#             "4_arithmetic_memorization" => ["arithmetic_task", "subtraction_task", "compare_task", "compare_task_bad"],
-#         ])
-#         colors = [
-#             collect(palette(:tab10))[4],
-#             collect(palette(:tab10))[8],
-#         ]
-#     else
-#         task_group_dict = task_groups
-#         colors = curriculum_plot_colors
-#     end
-#     good_curriculum_plot = plot_curriculum("good_curriculum", task_group_dict, colors)
-#     bad_curriculum_plot = plot_curriculum("bad_curriculum", task_group_dict, colors)
-    
-#     scale = subset ? 1 : 2
-#     plot(good_curriculum_plot, bad_curriculum_plot, layout=(1, 2), size=(640 * scale, 525))
-# end
-
-total_tasks = sum(map(k -> dataset[k], [keys(dataset)...]))
-cultural_counting_emphasis_small_number = 0.25 # 0.25 / 0.025
-cultural_counting_emphasis_large_number = 0.25 # 0.25 / 0.025
+# total_tasks = sum(map(k -> dataset[k], [keys(dataset)...]))
+# cultural_counting_emphasis_small_number = 0.25 # 0.25 / 0.025
+# cultural_counting_emphasis_large_number = 0.25 # 0.25 / 0.025
 
 function compute_counting_task_proportion(task_dict, cultural_counting_emphasis_small_number, cultural_counting_emphasis_large_number)
-    counting_tasks_small_number = sum(map(k -> dataset[k], filter(x -> x in ["give_2", "give_3"], [keys(dataset)...])))
+    total_tasks = sum(map(k -> task_dict[k], [keys(task_dict)...]))
+    counting_tasks_small_number = sum(map(k -> task_dict[k], filter(x -> x in ["give_2", "give_3"], [keys(task_dict)...])))
     individual_counting_proportions = map(n -> n < 4 ? 
         cultural_counting_emphasis_small_number * task_dict["give_$(n)"] : 
         cultural_counting_emphasis_large_number * task_dict["give_$(n)"] * 1/n * 0.5,
@@ -209,9 +192,9 @@ function compute_counting_task_proportion(task_dict, cultural_counting_emphasis_
     sum(individual_counting_proportions)
 end
 
-# counting_tasks_small_number = sum(map(y -> dataset[y], filter(k -> k in ["give_1", "give_2", "give_3"], [keys(dataset)...])))
-# counting_task_proportion = counting_tasks_small_number / total_tasks
-counting_task_proportion = compute_counting_task_proportion(dataset, cultural_counting_emphasis_small_number, cultural_counting_emphasis_large_number)
+# # counting_tasks_small_number = sum(map(y -> dataset[y], filter(k -> k in ["give_1", "give_2", "give_3"], [keys(dataset)...])))
+# # counting_task_proportion = counting_tasks_small_number / total_tasks
+# counting_task_proportion = compute_counting_task_proportion(dataset, cultural_counting_emphasis_small_number, cultural_counting_emphasis_large_number)
 
 # ACCURACIES
 # base_accuracies = Dict()
@@ -243,6 +226,7 @@ counting_task_proportion = compute_counting_task_proportion(dataset, cultural_co
 # end
 
 function compute_accuracies_efficient(dataset, normalized=true)
+    total_tasks = sum(map(k -> dataset[k], [keys(dataset)...]))
     accuracies = []
     for language_name in language_names 
         overall_accuracy = 0.0
@@ -274,115 +258,6 @@ function compute_accuracies_efficient(dataset, normalized=true)
 
     accuracies
 end
-
-# function run_test(test_name_, save_fig_title="")
-#     global test_name = test_name_
-#     params_dict["test_name"] = test_name
-
-#     task_dict = test_name_to_task_dict[test_name]
-#     params_dict["curriculum"] = Dict(map(k -> k => task_dict[k][2], collect(keys(task_dict))))
-
-#     global relate_task_proportion = task_dict["is_a_number_task"][2] / sum(map(k -> task_dict[k][2], [keys(task_dict)...]))
-# end
-
-accuracies = compute_accuracies_efficient(dataset)
-
-# accuracies[1] = 0.0
-
-# COSTS 
-
-memory_costs = [ # TODO
-    0.00, # L0: non-knower
-    0.15, # L1: 1-knower
-    0.30, # 2-knower
-    # 0.34, # 2-knower, approx
-    0.39, # 3-knower
-    # 0.39, # 3-knower, approx 
-    0.50, # 4-knower
-    0.41, # CP-knower
-    0.55, # CP-mapper
-    0.70, # CP-unit-knower
-]
-memory_costs = memory_costs .* 2
-computational_costs = [ # TODO
-    0.48, # L0: non-knower
-    0.50, # L1: 1-knower
-    0.50, # 2-knower
-    # 0.50, # 2-knower, approx
-    0.50, # 3-knower
-    # 0.50, # 3-knower, approx 
-    0.50, # 4-knower
-    0.70, # CP-knower
-    0.675, # CP-mapper
-    0.65, # CP-unit-knower
-]
-computational_costs = computational_costs
-
-time_step_unit = 0.00005
-num_time_steps = 3000
-
-# three bar plots: accuracy, memory_cost, computational_cost
-# one line plot: utilities over time
-# heat map 1: transition probabilities
-# heat map 2: max utility x transition probabilities 
-
-accuracy_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty), accuracies, color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Accuracy", title="Task Accuracy", ylims=(0.0, 1.0))
-
-memory_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty), memory_costs ./ maximum(memory_costs), color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Memory Cost", ylims=(0.0, 1.0))
-
-computation_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty), computational_costs ./ maximum(computational_costs), color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Computation Cost", ylims=(0.0, 1.0))
-
-plot(accuracy_plot, memory_cost_plot, computation_cost_plot, layout=(3, 1), size=(600, 525 * 3))
-
-function compute_utility(language_index, t)
-    gamma_c*t*accuracies[language_index] - cost_c *(memory_costs[language_index] + computational_costs[language_index] - 0.50)
-end
-
-gamma_c = 1.0 # 1.2
-cost_c = 0.015 # 0.008
-x_vals = collect(0:time_step_unit:num_time_steps*time_step_unit)
-line_plot = nothing 
-yvals_dict = Dict()
-global max_yvals = 0.0
-global min_yvals = 0.0
-for i in 1:length(language_names)
-    y_vals = map(x -> gamma_c*x*accuracies[i] - cost_c *(memory_costs[i] + computational_costs[i] - 0.50), x_vals)
-    global max_yvals = maximum([max_yvals, maximum(y_vals)])
-    global min_yvals = minimum([min_yvals, minimum(y_vals)])
-
-    if isnothing(line_plot)
-        global line_plot = plot(x_vals, y_vals, size=(600, 450), xlims=(0.0, x_vals[end]), ylims=(min_yvals, max_yvals), legend=:bottomright, label=join(split(language_names_pretty[i], "_")[2:end], " "), color = collect(palette(:tab10))[i], title="Utility vs. Cost Tolerance (Time)", xlabel="Cost Tolerance (Time)", ylabel="Utility")
-    else
-        global line_plot = plot(line_plot, x_vals, y_vals, size=(600, 450),  xlims=(0.0, x_vals[end]), ylims=(min_yvals, max_yvals), legend=:bottomright, label=join(split(language_names_pretty[i], "_")[2:end], " "), color = collect(palette(:tab10))[i], title="Utility vs. Cost Tolerance (Time)",  xlabel="Cost Tolerance (Time)", ylabel="Utility")
-    end
-    yvals_dict[i] = y_vals
-end
-
-max_indexes = []
-maxs = []
-for i in 1:length(x_vals) 
-    vals = map(arr -> arr[i], map(n -> yvals_dict[n], 1:length(language_names)))
-    # println(vals)
-    index = findall(v -> v == maximum(vals), vals)[1]
-    push!(max_indexes, index)
-    push!(maxs, join(split(language_names_pretty[index], "_")[2:end], " "))
-    # println(maxs[end])
-end
-
-# line_plot
-
-max_utility_plot = bar(ones(length(maxs)), color = map(i -> collect(palette(:tab10))[i], max_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
-
-# plot(line_plot, max_utility_plot, layout=(2, 1), size=(600, 550))
-line_plot
-
-# _, h0 = plot_heatmap(0, "t=0")
-# _, h20 = plot_heatmap(1000, "t=100")
-# _, h40 = plot_heatmap(2000, "t=200")
-# _, h60 = plot_heatmap(3000, "t=300")
-# _, h80 = plot_heatmap(4000, "t=400")
-# _, h100 = plot_heatmap(5000, "t=500")
-# plot(h0, h20, h40, h60, h80, h100)
 
 function distance_between_specs(spec1, spec2, relate_factor=0.0)
     dist = 0
@@ -447,144 +322,309 @@ function plot_heatmap(relate_factor, t, title="")
     heatmap_values, heatmap(language_names, language_names, heatmap_values_matrix, aspect_ratio=:equal, clims=(0.0, 1.0), title=title, xrotation=270, tickfontsize=5, titlefontsize=11)
 end
 
+function compute_utility(language_index, t)
+    gamma_c*t*accuracies[language_index] - cost_c *(memory_costs[language_index] + computational_costs[language_index] - 0.50)
+end
+
+# PARAMS
 
 transition_prob_identity_base = 0.975
 transition_prob_identity_rate = 0.004 # 0.0003
 transition_prob_base = 100.0 # 2
 utility_base = 10000000000000.0
 
+time_step_unit = 0.00005
+num_time_steps = 3000
 
-three_knower_stage_reached = false
-three_knower_stage_intervention_made = false
+gamma_c = 1.0 # 1.2
+cost_c = 0.015 # 0.008
+
+params_dict = Dict([
+
+])
+
+accuracies = []
+memory_costs = []
+computation_costs = []
+relate_task_proportion = 0.0
 relate_factors = []
-max_lot_indexes = [1]
-max_lots = [language_names_pretty[1]]
-curr_distribution = map(x -> 0.0, 1:length(language_names))
-curr_distribution[1] = 1.0
 all_distributions = []
-push!(all_distributions, curr_distribution)
-for t in 0:time_step_unit:num_time_steps*time_step_unit
+counting_task_proportion = -1.0
 
-    if three_knower_stage_reached && !three_knower_stage_intervention_made
-        # add intervention 
-        global three_knower_stage_intervention_made = true
+function run_test(test_name_, normalized=true, intervention=false, intervention_small=false, intervention_count=false, save_fig_title="")
+    global test_name = test_name_
+    # params_dict["test_name"] = test_name
 
-        # low number 
-        # dataset["give_1"] += 0
-        # dataset["give_2"] += 7
-        # dataset["give_3"] += 7
-        
-        # high number 
-        dataset["give_4"] += 2
-        dataset["give_5"] += 2 
-        dataset["give_6"] += 2 
-        dataset["give_7"] += 2
-        dataset["give_8"] += 2 
-        dataset["give_9"] += 2 
-        dataset["give_10"] += 2
+    individual_dist_plot = plot_individual_task_distribution(test_name)
+    grouped_dist_plot = plot_grouped_task_distribution(test_name)
+    # plot(individual_dist_plot, grouped_dist_plot, layout=(1, 2))
 
-        # counting context vs. no counting context
-        # global cultural_counting_emphasis_small_number = 0.5
-        global cultural_counting_emphasis_large_number = 0.5
+    task_dict, cultural_counting_emphasis_small_number, cultural_counting_emphasis_large_number = test_name_to_task_dict[test_name]
+    # params_dict["curriculum"] = Dict(map(k -> k => task_dict[k][2], collect(keys(task_dict))))
 
-        # recompute accuracies and counting_task_proportion
-        global accuracies = compute_accuracies_efficient(dataset)
+    global counting_task_proportion = compute_counting_task_proportion(task_dict, cultural_counting_emphasis_small_number, cultural_counting_emphasis_large_number)
 
-        global counting_task_proportion = compute_counting_task_proportion(dataset, cultural_counting_emphasis_small_number, cultural_counting_emphasis_large_number)
+    global accuracies = compute_accuracies_efficient(task_dict, normalized)
 
-    end
+    # accuracies[1] = 0.0
 
+    # COSTS 
 
-    utility_sum = sum(map(x -> utility_base^(compute_utility(x, t)), 1:length(language_names)))
-    
-    relate_factor = t * counting_task_proportion * 200
-    relate_factor = relate_factor > 1 ? 1 : relate_factor
-    push!(relate_factors, relate_factor)
+    global memory_costs = [ # TODO
+        0.00, # L0: non-knower
+        0.15, # L1: 1-knower
+        0.30, # 2-knower
+        # 0.34, # 2-knower, approx
+        0.39, # 3-knower
+        # 0.39, # 3-knower, approx 
+        0.50, # 4-knower
+        0.41, # CP-knower
+        0.55, # CP-mapper
+        0.70, # CP-unit-knower
+    ]
+    global memory_costs = memory_costs .* 2
+    global computational_costs = [ # TODO
+        0.48, # L0: non-knower
+        0.50, # L1: 1-knower
+        0.50, # 2-knower
+        # 0.50, # 2-knower, approx
+        0.50, # 3-knower
+        # 0.50, # 3-knower, approx 
+        0.50, # 4-knower
+        0.70, # CP-knower
+        0.675, # CP-mapper
+        0.65, # CP-unit-knower
+    ]
+    computational_costs = computational_costs
 
-    transition_probabilities, _ = plot_heatmap(relate_factor, t, "")
-    next_distribution = map(x -> 0.0, 1:length(language_names))
+    # three bar plots: accuracy, memory_cost, computational_cost
+    # one line plot: utilities over time
+    # heat map 1: transition probabilities
+    # heat map 2: max utility x transition probabilities 
+
+    accuracy_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty), accuracies, color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Accuracy", title="Task Accuracy", ylims=(0.0, 1.0))
+
+    memory_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty), memory_costs ./ maximum(memory_costs), color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Memory Cost", ylims=(0.0, 1.0))
+
+    computation_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty), computational_costs ./ maximum(computational_costs), color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Computation Cost", ylims=(0.0, 1.0))
+
+    # plot(accuracy_plot, memory_cost_plot, computation_cost_plot, layout=(3, 1), size=(600, 525 * 3))
+
+    x_vals = collect(0:time_step_unit:num_time_steps*time_step_unit)
+    line_plot = nothing 
+    yvals_dict = Dict()
+    max_yvals = 0.0
+    min_yvals = 0.0
     for i in 1:length(language_names)
-        total = 0.0
-        utility = utility_base^(compute_utility(i, t)) / utility_sum
-        for j in 1:length(language_names)
-            transition_prob = transition_probabilities[j][i]
-            # if (j in [1, 2, 3, 4]) &&  (i in [8, 9, 10])
-            #     transition_prob = 0
-            # end
+        y_vals = map(x -> gamma_c*x*accuracies[i] - cost_c *(memory_costs[i] + computational_costs[i] - 0.50), x_vals)
+        max_yvals = maximum([max_yvals, maximum(y_vals)])
+        min_yvals = minimum([min_yvals, minimum(y_vals)])
 
-            total += transition_prob * utility * curr_distribution[j]
+        if isnothing(line_plot)
+            line_plot = plot(x_vals, y_vals, size=(600, 450), xlims=(0.0, x_vals[end]), ylims=(min_yvals, max_yvals), legend=:bottomright, label=join(split(language_names_pretty[i], "_")[2:end], " "), color = collect(palette(:tab10))[i], title="Utility vs. Cost Tolerance (Time)", xlabel="Cost Tolerance (Time)", ylabel="Utility")
+        else
+            line_plot = plot(line_plot, x_vals, y_vals, size=(600, 450),  xlims=(0.0, x_vals[end]), ylims=(min_yvals, max_yvals), legend=:bottomright, label=join(split(language_names_pretty[i], "_")[2:end], " "), color = collect(palette(:tab10))[i], title="Utility vs. Cost Tolerance (Time)",  xlabel="Cost Tolerance (Time)", ylabel="Utility")
         end
-        next_distribution[i] = total
+        yvals_dict[i] = y_vals
     end
-    next_distribution = next_distribution ./ sum(next_distribution)
-    index = findall(v -> v == maximum(next_distribution), next_distribution)[1]
-    push!(max_lot_indexes, index)
-    push!(max_lots, join(split(language_names_pretty[index], "_")[2:end], " "))
-    if max_lot_indexes[end] != max_lot_indexes[end - 1]
-        println(t)
+
+    max_indexes = []
+    maxs = []
+    for i in 1:length(x_vals) 
+        vals = map(arr -> arr[i], map(n -> yvals_dict[n], 1:length(language_names)))
+        # println(vals)
+        index = findall(v -> v == maximum(vals), vals)[1]
+        push!(max_indexes, index)
+        push!(maxs, join(split(language_names_pretty[index], "_")[2:end], " "))
+        # println(maxs[end])
     end
-    global curr_distribution = next_distribution
-    # if curr_distribution[6] != 0
-    #     println("hello 1")
-    # end
+
+    # line_plot
+
+    max_utility_plot = bar(ones(length(maxs)), color = map(i -> collect(palette(:tab10))[i], max_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
+
+    # plot(line_plot, max_utility_plot, layout=(2, 1), size=(600, 550))
+    line_plot
+
+    # _, h0 = plot_heatmap(0, "t=0")
+    # _, h20 = plot_heatmap(1000, "t=100")
+    # _, h40 = plot_heatmap(2000, "t=200")
+    # _, h60 = plot_heatmap(3000, "t=300")
+    # _, h80 = plot_heatmap(4000, "t=400")
+    # _, h100 = plot_heatmap(5000, "t=500")
+    # plot(h0, h20, h40, h60, h80, h100)
+
+    three_knower_stage_reached = false
+    three_knower_stage_intervention_made = false
+    relate_factors = []
+    max_lot_indexes = [1]
+    max_lots = [language_names_pretty[1]]
+    curr_distribution = map(x -> 0.0, 1:length(language_names))
+    curr_distribution[1] = 1.0
+    all_distributions = []
     push!(all_distributions, curr_distribution)
-    println(max_lots[end])
+    for t in 0:time_step_unit:num_time_steps*time_step_unit
 
-    if max_lots[end] == "three knower" && !three_knower_stage_reached
-        global three_knower_stage_reached = true
+        if intervention && three_knower_stage_reached && !three_knower_stage_intervention_made
+            # add intervention 
+            three_knower_stage_intervention_made = true
+
+            if intervention_small 
+                # low number 
+                task_dict["give_1"] += 0
+                task_dict["give_2"] += 7
+                task_dict["give_3"] += 7
+    
+                if intervention_count 
+                    cultural_counting_emphasis_small_number = 0.5
+                end
+
+            else
+                # high number 
+                task_dict["give_4"] += 2
+                task_dict["give_5"] += 2 
+                task_dict["give_6"] += 2 
+                task_dict["give_7"] += 2
+                task_dict["give_8"] += 2 
+                task_dict["give_9"] += 2 
+                task_dict["give_10"] += 2
+
+                if intervention_count 
+                    cultural_counting_emphasis_large_number = 0.5
+                end
+
+            end
+            
+            # counting context vs. no counting context
+            # cultural_counting_emphasis_small_number = 0.5
+            # cultural_counting_emphasis_large_number = 0.5
+
+            # recompute accuracies and counting_task_proportion
+            global accuracies = compute_accuracies_efficient(task_dict, normalized)
+
+            global counting_task_proportion = compute_counting_task_proportion(task_dict, cultural_counting_emphasis_small_number, cultural_counting_emphasis_large_number)
+        end
+
+        utility_sum = sum(map(x -> utility_base^(compute_utility(x, t)), 1:length(language_names)))
+        
+        relate_factor = t * counting_task_proportion * 200
+        relate_factor = relate_factor > 1 ? 1 : relate_factor
+        push!(relate_factors, relate_factor)
+
+        transition_probabilities, _ = plot_heatmap(relate_factor, t, "")
+        next_distribution = map(x -> 0.0, 1:length(language_names))
+        for i in 1:length(language_names)
+            total = 0.0
+            utility = utility_base^(compute_utility(i, t)) / utility_sum
+            for j in 1:length(language_names)
+                transition_prob = transition_probabilities[j][i]
+                # if (j in [1, 2, 3, 4]) &&  (i in [8, 9, 10])
+                #     transition_prob = 0
+                # end
+
+                total += transition_prob * utility * curr_distribution[j]
+            end
+            next_distribution[i] = total
+        end
+        next_distribution = next_distribution ./ sum(next_distribution)
+        index = findall(v -> v == maximum(next_distribution), next_distribution)[1]
+        push!(max_lot_indexes, index)
+        push!(max_lots, join(split(language_names_pretty[index], "_")[2:end], " "))
+        if max_lot_indexes[end] != max_lot_indexes[end - 1]
+            println(t)
+        end
+        curr_distribution = next_distribution
+        # if curr_distribution[6] != 0
+        #     println("hello 1")
+        # end
+        push!(all_distributions, curr_distribution)
+        println(max_lots[end])
+
+        if max_lots[end] == "three knower" && !three_knower_stage_reached
+            three_knower_stage_reached = true
+        end
+
     end
 
-end
+    max_lot_plot = bar(ones(length(max_lots)), color = map(i -> collect(palette(:tab10))[i], max_lot_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
+    # max_lot_plot
+    # plot(line_plot, max_lot_plot, layout=(2, 1), size=(600, 550))
 
-max_lot_plot = bar(ones(length(max_lots)), color = map(i -> collect(palette(:tab10))[i], max_lot_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
-# max_lot_plot
-# plot(line_plot, max_lot_plot, layout=(2, 1), size=(600, 550))
+    # for d in all_distributions
+    #     println(d)
+    # end
 
-# for d in all_distributions
-#     println(d)
-# end
+    # for i in 295:305
+    #     println(all_distributions[i])
+    # end
 
-# for i in 295:305
-#     println(all_distributions[i])
-# end
+    # heatmap_values = []
+    # for l1 in language_names 
+    #     push!(heatmap_values, [])
+    #     for l2 in language_names 
+    #         l1_spec = language_name_to_spec[l1]
+    #         l2_spec = language_name_to_spec[l2]
+    #         dist, s = distance_between_specs(l1_spec, l2_spec)
+    #         push!(heatmap_values[end], dist)
+    #     end
+    # end
 
-# heatmap_values = []
-# for l1 in language_names 
-#     push!(heatmap_values, [])
-#     for l2 in language_names 
-#         l1_spec = language_name_to_spec[l1]
-#         l2_spec = language_name_to_spec[l2]
-#         dist, s = distance_between_specs(l1_spec, l2_spec)
-#         push!(heatmap_values[end], dist)
-#     end
-# end
-
-dist_plot = nothing
-dist_xs = collect(0:time_step_unit:num_time_steps*time_step_unit)
-dist_ys = []
-for i in 1:length(language_names)
-    println(i)
-    global dist_ys = map(t -> all_distributions[t][i], 1:length(dist_xs))
-    if isnothing(dist_plot)
-        global dist_plot = plot(dist_xs, dist_ys, color=collect(palette(:tab10))[i], label=language_names_pretty[i], legend=:right, size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time")
-    else
-        global dist_plot = plot(dist_plot, dist_xs, dist_ys, color=collect(palette(:tab10))[i], label=language_names_pretty[i], legend=:right, size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time")
+    dist_plot = nothing
+    dist_xs = collect(0:time_step_unit:num_time_steps*time_step_unit)
+    dist_ys = []
+    for i in 1:length(language_names)
+        println(i)
+        dist_ys = map(t -> all_distributions[t][i], 1:length(dist_xs))
+        if isnothing(dist_plot)
+            dist_plot = plot(dist_xs, dist_ys, color=collect(palette(:tab10))[i], label=language_names_pretty[i], legend=:right, size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time")
+        else
+            dist_plot = plot(dist_plot, dist_xs, dist_ys, color=collect(palette(:tab10))[i], label=language_names_pretty[i], legend=:right, size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time")
+        end
     end
+
+    # max_lot_plot
+
+    # dist_plot
+
+    # plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500))
+
+    println("3 knower becomes MAP: $("three knower" in max_lots ? findall(x -> x == "three knower", max_lots)[1] : -1)")
+    println("CP knower becomes MAP: $("CP knower" in max_lots ? findall(x -> x == "CP knower", max_lots)[1] : -1)")
+
+    println("1 knower becomes MAP: $("three knower" in max_lots ? findall(x -> x == "one knower", max_lots)[1] : -1)")
+    # println("CP knower becomes MAP: $("CP knower" in max_lots ? findall(x -> x == "CP knower", max_lots)[1] : -1)")
+
+    if save_fig_title != ""
+        # save figures and params
+
+    end
+
+    CP_arrival_time = "CP knower" in max_lots ? findall(x -> x == "CP knower", max_lots)[1] : -1
+
+    (individual_dist_plot, # individual task distribution 
+    grouped_dist_plot, # grouped/categorized task distribution
+    accuracy_plot, # accuracy bar plot
+    memory_cost_plot, # memory cost bar plot
+    computation_cost_plot, # computation cost plot
+    line_plot, # utility evolution plot
+    max_utility_plot, # maximum utility evolution plot
+    dist_plot, # posterior evolution plot
+    max_lot_plot, # MAP evolution plot
+    CP_arrival_time)
 end
 
+# (individual_dist_plot, 
+# grouped_dist_plot, 
+# accuracy_plot, 
+# memory_cost_plot, 
+# computation_cost_plot, 
+# line_plot, 
+# max_utility_plot, 
+# dist_plot, 
 # max_lot_plot
-
-# dist_plot
+# CP_arrival_time) = run_test("english")
 
 # plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500))
-
-println("3 knower becomes MAP: $("three knower" in max_lots ? findall(x -> x == "three knower", max_lots)[1] : -1)")
-println("CP knower becomes MAP: $("CP knower" in max_lots ? findall(x -> x == "CP knower", max_lots)[1] : -1)")
-
-println("1 knower becomes MAP: $("three knower" in max_lots ? findall(x -> x == "one knower", max_lots)[1] : -1)")
-# println("CP knower becomes MAP: $("CP knower" in max_lots ? findall(x -> x == "CP knower", max_lots)[1] : -1)")
-
-plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500))
 
 # relate_factor = 0.0
 # distances = []
@@ -625,6 +665,7 @@ plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1
 # count_emphasis_intervention_plot = bar(xlabels, ylabels, ylims=(0.0, 1.0), legend=false, xlabel="Intervention", ylabel="Parameter Value", title="Count Seqence Emphasis Comparison: Parameter Values", titlefontsize=11, xguidefontsize=10, yguidefontsize=10)
 # annotate!(xlabels, ylabels, ylabels, :bottom, annotationfontsize=6)
 
-x = (1 .- [1053, 949, 944, 949] ./ 1106) * 100
-bar(labels, x, legend=false, xtickfontsize=12, xlabel="Intervention Type", ylabel="% Reduction", ytickfontsize=12, yguidefontsize=18, xguidefontsize=18, title="Percent Reduction in CP-Knower Acquisition Time\nvs. Intervention Type", titlefontsize=21, annotationfontsize=1, ylims=(0.0, 20.0), size=(1000, 1000))
-annotate!(labels, x, map(a -> "$(round(a, digits=2))%", x), :bottom)
+# # intervention plot
+# x = (1 .- [1053, 949, 944, 949] ./ 1106) * 100
+# bar(labels, x, legend=false, xtickfontsize=12, xlabel="Intervention Type", ylabel="% Reduction", ytickfontsize=12, yguidefontsize=18, xguidefontsize=18, title="Percent Reduction in CP-Knower Acquisition Time\nvs. Intervention Type", titlefontsize=21, annotationfontsize=1, ylims=(0.0, 20.0), size=(1000, 1000))
+# annotate!(labels, x, map(a -> "$(round(a, digits=2))%", x), :bottom)
