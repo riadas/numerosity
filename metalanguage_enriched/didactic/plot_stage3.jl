@@ -3,12 +3,15 @@ include("../run_inference.jl")
 # DEFINE LANGUAGES
 
 language_names = map(x -> "L$(x)", 0:7)
+language_names = [language_names[1:3]..., "L2.5", "L3", "L3.5", language_names[5:end]...]
 
 language_names_pretty = [
     "L0_non_knower",
     "L1_one_knower",
     "L2_two_knower",
+    "L2.5_two_knower_approx",
     "L3_three_knower",
+    "L3.5_three_knower_approx",
     "L4_four_knower",
     "L5_CP_knower",
     "L6_CP_mapper",
@@ -20,6 +23,14 @@ L0_spec = specs[3] # non-knower
 L1_spec = specs[4] # one-knower
 L2_spec = specs[5] # two-knower
 L3_spec = specs[6] # three-knower
+
+# two-knower approx
+L25_spec = deepcopy(L2_spec)
+L25_spec["approx"] = true
+
+# three-knower approx
+L35_spec = deepcopy(L3_spec)
+L35_spec["approx"] = true
 
 # four-knower
 L4_spec = deepcopy(L3_spec)
@@ -41,8 +52,9 @@ L5_spec = deepcopy(L6_spec)
 L5_spec["ANS_reconciled"] = false
 L5_spec["unit_add"] = "unit_add_base"
 
-language_name_to_spec = Dict(map(i -> language_names[i] => eval(Meta.parse("L$(i - 1)_spec")), 1:8))
-
+language_name_to_spec = Dict(map(i -> "L$(i)" => eval(Meta.parse("L$(i)_spec")), 0:7))
+language_name_to_spec["L2.5"] = L25_spec
+language_name_to_spec["L3.5"] = L35_spec
 
 # TASKS
 english_dataset = Dict([
@@ -211,7 +223,7 @@ end
 #     end
 #     include("intermediate_outputs/current_language.jl")
 
-#     for task_name in keys(dataset) 
+#     for task_name in keys(english_dataset) 
 #         println(task_name)
 #         single_task_dataset = Dict([eval(Symbol(task_name)) => 1])
 
@@ -223,12 +235,25 @@ end
 #         println(accuracy)
 #         base_accuracies[language_name][task_name] = accuracy
 #     end
+
+#     if occursin(".5", language_name)
+#         start_num = occursin("2.5", language_name) ? 3 : 4
+#         for n in start_num:10
+#             base_accuracies[language_name]["give_$(n)"] = (1/2)^(n - start_num + 1)
+#             base_accuracies[language_name]["how_many_$(n)"] = (1/2)^(n - start_num + 1)
+#         end
+#     end
+
 # end
 
+function compute_num_tasks(dataset)
+    sum(map(k -> dataset[k], [keys(dataset)...]))
+end
+
 function compute_accuracies_efficient(dataset, normalized=true)
-    total_tasks = sum(map(k -> dataset[k], [keys(dataset)...]))
+    total_tasks = compute_num_tasks(dataset)
     accuracies = []
-    for language_name in language_names 
+    for language_name in language_names
         overall_accuracy = 0.0
         for task_name in keys(dataset)
             task_count = dataset[task_name]
@@ -242,6 +267,8 @@ function compute_accuracies_efficient(dataset, normalized=true)
 
         if normalized
             overall_accuracy = overall_accuracy / total_tasks # / total tasks
+        else
+            overall_accuracy = overall_accuracy * compute_num_tasks(test_name_to_task_dict["english"][1]) / total_tasks
         end
         
         push!(accuracies, overall_accuracy)
@@ -258,6 +285,71 @@ function compute_accuracies_efficient(dataset, normalized=true)
 
     accuracies
 end
+
+function compute_memory_cost(spec)
+    cost = 0.0
+    addend = 0.15
+    if spec["full_knower_compression"] == default_spec["full_knower_compression"]
+        # pre-CP-knower: count numbers learned
+        number_defn_count = 0
+        for k in keys(spec)
+            if occursin("definition", k) && !occursin("blur", k) && !occursin("unknown", k) && !occursin("give_n", k)
+                if !occursin("not", spec[k])
+                    println(spec[k])
+                    println(default_spec[k])
+                    number_defn_count += 1
+                end
+            end
+        end
+        println(number_defn_count)
+
+        for n in 1:number_defn_count 
+            if n % 3 == 0 
+                addend = addend * 3/5
+            end
+            cost += addend
+        end
+
+        if spec["approx"]
+            cost += addend * 2/3
+        end
+    else
+        # CP-knower stage reached
+        base_cost = addend # knowing meaning of just "one"
+        rule_knower_cost = addend * 4/3 # knowing meaning of recursive rule following "one"
+        cost = base_cost + rule_knower_cost 
+
+        num_extra_memorizations = 0
+        if spec["ANS_reconciled"] != default_spec["ANS_reconciled"]
+            num_extra_memorizations += 1
+        end
+
+        if spec["unit_add"] != default_spec["unit_add"]
+            num_extra_memorizations += 1
+        end
+
+        for n in 1:num_extra_memorizations 
+            if n % 2 == 0
+                addend = addend * 3/5
+            end
+            cost += addend
+        end
+    end
+
+    cost
+end
+
+function compute_all_memory_costs() 
+    costs = []
+    for language_name in language_names
+        println(language_name)
+        spec = language_name_to_spec[language_name]
+        cost = compute_memory_cost(spec)
+        push!(costs, cost)
+    end
+    costs
+end
+
 
 function distance_between_specs(spec1, spec2, relate_factor=0.0)
     dist = 0
@@ -351,6 +443,10 @@ relate_factors = []
 all_distributions = []
 counting_task_proportion = -1.0
 
+# modified color palette
+old_colors = collect(palette(:tab10))
+modified_colors = [old_colors[1:3]..., old_colors[9], old_colors[4], old_colors[10], old_colors[5:8]...]
+
 function run_test(test_name_, normalized=true, intervention=false, intervention_small=false, intervention_count=false, save_fig_title="")
     global test_name = test_name_
     # params_dict["test_name"] = test_name
@@ -370,26 +466,27 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
 
     # COSTS 
 
-    global memory_costs = [ # TODO
-        0.00, # L0: non-knower
-        0.15, # L1: 1-knower
-        0.30, # 2-knower
-        # 0.34, # 2-knower, approx
-        0.39, # 3-knower
-        # 0.39, # 3-knower, approx 
-        0.50, # 4-knower
-        0.41, # CP-knower
-        0.55, # CP-mapper
-        0.70, # CP-unit-knower
-    ]
+    # global memory_costs = [ # TODO
+    #     0.00, # L0: non-knower
+    #     0.15, # L1: 1-knower
+    #     0.30, # 2-knower
+    #     # 0.34, # 2-knower, approx
+    #     0.39, # 3-knower
+    #     # 0.39, # 3-knower, approx 
+    #     0.48, # 4-knower
+    #     0.35, # CP-knower # 0.41
+    #     0.5, # CP-mapper
+    #     0.59, # CP-unit-knower # normalized setting: 0.7
+    # ]
+    global memory_costs = compute_all_memory_costs()
     global memory_costs = memory_costs .* 2
     global computational_costs = [ # TODO
         0.48, # L0: non-knower
         0.50, # L1: 1-knower
         0.50, # 2-knower
-        # 0.50, # 2-knower, approx
+        0.70, # 2-knower, approx # previously: 0.50
         0.50, # 3-knower
-        # 0.50, # 3-knower, approx 
+        0.70, # 3-knower, approx # previously: 0.50
         0.50, # 4-knower
         0.70, # CP-knower
         0.675, # CP-mapper
@@ -402,11 +499,11 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
     # heat map 1: transition probabilities
     # heat map 2: max utility x transition probabilities 
 
-    accuracy_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty), accuracies, color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Accuracy", title="Task Accuracy", ylims=(0.0, 1.0))
+    accuracy_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty), accuracies, color = modified_colors, xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Accuracy", title="Task Accuracy", ylims=(0.0, 1.0))
 
-    memory_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty), memory_costs ./ maximum(memory_costs), color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Memory Cost", ylims=(0.0, 1.0))
+    memory_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty), memory_costs ./ maximum(memory_costs), color = modified_colors, xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Memory Cost", ylims=(0.0, 1.0))
 
-    computation_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty), computational_costs ./ maximum(computational_costs), color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Computation Cost", ylims=(0.0, 1.0))
+    computation_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty), computational_costs ./ maximum(computational_costs), color = modified_colors, xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Computation Cost", ylims=(0.0, 1.0))
 
     # plot(accuracy_plot, memory_cost_plot, computation_cost_plot, layout=(3, 1), size=(600, 525 * 3))
 
@@ -421,9 +518,9 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
         min_yvals = minimum([min_yvals, minimum(y_vals)])
 
         if isnothing(line_plot)
-            line_plot = plot(x_vals, y_vals, size=(600, 450), xlims=(0.0, x_vals[end]), ylims=(min_yvals, max_yvals), legend=:bottomright, label=join(split(language_names_pretty[i], "_")[2:end], " "), color = collect(palette(:tab10))[i], title="Utility vs. Cost Tolerance (Time)", xlabel="Cost Tolerance (Time)", ylabel="Utility")
+            line_plot = plot(x_vals, y_vals, size=(600, 450), xlims=(0.0, x_vals[end]), ylims=(min_yvals, max_yvals), legend=:bottomright, label=join(split(language_names_pretty[i], "_")[2:end], " "), color = modified_colors[i], title="Utility vs. Cost Tolerance (Time)", xlabel="Cost Tolerance (Time)", ylabel="Utility")
         else
-            line_plot = plot(line_plot, x_vals, y_vals, size=(600, 450),  xlims=(0.0, x_vals[end]), ylims=(min_yvals, max_yvals), legend=:bottomright, label=join(split(language_names_pretty[i], "_")[2:end], " "), color = collect(palette(:tab10))[i], title="Utility vs. Cost Tolerance (Time)",  xlabel="Cost Tolerance (Time)", ylabel="Utility")
+            line_plot = plot(line_plot, x_vals, y_vals, size=(600, 450),  xlims=(0.0, x_vals[end]), ylims=(min_yvals, max_yvals), legend=:bottomright, label=join(split(language_names_pretty[i], "_")[2:end], " "), color = modified_colors[i], title="Utility vs. Cost Tolerance (Time)",  xlabel="Cost Tolerance (Time)", ylabel="Utility")
         end
         yvals_dict[i] = y_vals
     end
@@ -441,7 +538,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
 
     # line_plot
 
-    max_utility_plot = bar(ones(length(maxs)), color = map(i -> collect(palette(:tab10))[i], max_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
+    max_utility_plot = bar(ones(length(maxs)), color = map(i -> modified_colors[i], max_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
 
     # plot(line_plot, max_utility_plot, layout=(2, 1), size=(600, 550))
     line_plot
@@ -546,7 +643,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
 
     end
 
-    max_lot_plot = bar(ones(length(max_lots)), color = map(i -> collect(palette(:tab10))[i], max_lot_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
+    max_lot_plot = bar(ones(length(max_lots)), color = map(i -> modified_colors[i], max_lot_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
     # max_lot_plot
     # plot(line_plot, max_lot_plot, layout=(2, 1), size=(600, 550))
 
@@ -576,9 +673,9 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
         println(i)
         dist_ys = map(t -> all_distributions[t][i], 1:length(dist_xs))
         if isnothing(dist_plot)
-            dist_plot = plot(dist_xs, dist_ys, color=collect(palette(:tab10))[i], label=language_names_pretty[i], legend=:right, size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time")
+            dist_plot = plot(dist_xs, dist_ys, color=modified_colors[i], label=language_names_pretty[i], legend=:right, size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time")
         else
-            dist_plot = plot(dist_plot, dist_xs, dist_ys, color=collect(palette(:tab10))[i], label=language_names_pretty[i], legend=:right, size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time")
+            dist_plot = plot(dist_plot, dist_xs, dist_ys, color=modified_colors[i], label=language_names_pretty[i], legend=:right, size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time")
         end
     end
 
@@ -613,18 +710,18 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
     CP_arrival_time)
 end
 
-# (individual_dist_plot, 
-# grouped_dist_plot, 
-# accuracy_plot, 
-# memory_cost_plot, 
-# computation_cost_plot, 
-# line_plot, 
-# max_utility_plot, 
-# dist_plot, 
-# max_lot_plot
-# CP_arrival_time) = run_test("english")
+(individual_dist_plot, 
+grouped_dist_plot, 
+accuracy_plot, 
+memory_cost_plot, 
+computation_cost_plot, 
+line_plot, 
+max_utility_plot, 
+dist_plot, 
+max_lot_plot,
+CP_arrival_time) = run_test("english", false)
 
-# plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500))
+plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500))
 
 # relate_factor = 0.0
 # distances = []
