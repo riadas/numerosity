@@ -34,6 +34,33 @@ function generate_language(spec)
         language = "$(language)\n$(ANS_eval_components)"
     end
 
+    singular = singular_base
+    dual = dual_base 
+    if [keys(spec["quantifier_structure"])...] != []
+        if spec["quantifier_structure"]["singular"]
+            singular_definition = "set.value == 1"
+        else
+            singular_definition = "true"
+        end
+
+        singular = replace(singular_template, "[singular_definition]" => singular_definition)
+
+        if "dual" in keys(spec["quantifier_structure"])
+            if spec["quantifier_structure"]["dual"]
+                dual_definition = "set.value == 2"
+            elseif !spec["quantifier_structure"]["singular"]
+                dual_definition = "true"
+            else
+                dual_definition = "not(Base.invokelatest(singular, set))"
+            end
+            dual = replace(dual_template, "[dual_definition]" => dual_definition)
+        end
+
+    end
+
+    language = replace(language, "[singular]" => singular)
+    language = replace(language, "[dual]" => dual)
+
     return language
 end
 
@@ -41,6 +68,10 @@ language_template = """
 include("../../base/base_semantics.jl")
 
 global parallel_individuation_limit = [parallel_individuation_limit]
+
+[singular]
+
+[dual]
 
 function one(set::Union{Exact, Blur})::Bool
     [one_definition]
@@ -119,6 +150,21 @@ end
 
 [give_n_definition]
 
+"""
+
+singular_base = ""
+dual_base = ""
+
+singular_template = """
+function singular(set::Exact)::Bool
+    [singular_definition]
+end
+"""
+
+dual_template = """
+function dual(set::Exact)::Bool
+    [dual_definition]
+end
 """
 
 # function represent_unknown(set::NumberRep, label::Union{String, CountRep})::NumberRep

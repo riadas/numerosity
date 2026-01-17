@@ -2,6 +2,13 @@ include("../../../base/base_semantics.jl")
 
 global parallel_individuation_limit = 4
 
+function singular(set::Exact)::Bool
+    set.value == 1
+end
+
+
+
+
 function one(set::Union{Exact, Blur})::Bool
     set.value == 1
 end

@@ -107,6 +107,7 @@ default_spec = Dict([
     "unit_add" => "unit_add_base",
     "give_n_definition" => "give_n_standard_definition", # give_n_passive_count_definition
     "approx" => false,
+    "quantifier_structure" => Dict(),
 ])
 
 specs = []

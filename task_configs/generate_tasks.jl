@@ -1,5 +1,11 @@
 include("../base/base_semantics.jl")
 
+# quantifier structure tasks
+quantifier_singular_task_total_1 = Singular(1)
+quantifier_singular_task_total_2 = Singular(2)
+quantifier_dual_task_total_1 = Dual(1)
+quantifier_dual_task_total_2 = Dual(2)
+
 # give n tasks
 give_1 = GiveN("one")
 give_2 = GiveN("two")

@@ -41,6 +41,14 @@ struct GiveN <: Task
     output::Exact
 end 
 
+struct Singular <: Task 
+    input::Int
+end
+
+struct Dual <: Task 
+    input::Int
+end
+
 struct HowMany <: Task
     input::NumberRep
     output::String
@@ -136,8 +144,8 @@ function singular(set::Exact)
     set.value == 1
 end
 
-function plural(set::Exact)
-    set.value != 1
+function dual(set::Exact)
+    set.value == 2
 end
 
 function add(set1::NumberRep, set2::NumberRep)::NumberRep
@@ -175,6 +183,45 @@ function give_n(n::String, prob=false)
         prob ? 1/length(matches) : sample(matches)
     else
         prob ? 1/max_num : sample(map(i -> Exact(i), 1:max_num))
+    end
+end
+
+function singular(total::Int, prob=false)
+    f = eval(Meta.parse("singular")) # definition of the number n
+    matches = []
+    for i in 1:max_num 
+        set = Exact(i)
+        if Base.invokelatest(f, set) 
+            push!(matches, set)
+        end
+    end
+
+    if length(matches) == 1
+        1.0
+    else
+        1/(total + 1)
+    end
+end
+
+function dual(total::Int, prob=false)
+    f = eval(Meta.parse("dual")) # definition of the number n
+    matches = []
+    for i in 1:max_num 
+        set = Exact(i)
+        if Base.invokelatest(f, set) 
+            push!(matches, set)
+        end
+    end
+
+    if length(matches) == 1
+        1.0
+    else
+        f1 = eval(Meta.parse("singular"))
+        if !Base.invokelatest(f1, Exact(2))
+            1/(total)
+        else
+            1/(total + 1)
+        end
     end
 end
 

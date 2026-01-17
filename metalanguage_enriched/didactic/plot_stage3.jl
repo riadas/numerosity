@@ -305,7 +305,7 @@ function compute_memory_cost(spec)
 
         for n in 1:number_defn_count 
             if n % 3 == 0 
-                addend = addend * 3/5
+                addend = addend * 4/5
             end
             cost += addend
         end
@@ -316,7 +316,7 @@ function compute_memory_cost(spec)
     else
         # CP-knower stage reached
         base_cost = addend # knowing meaning of just "one"
-        rule_knower_cost = addend * 4/3 # knowing meaning of recursive rule following "one"
+        rule_knower_cost = addend * 5/3 # knowing meaning of recursive rule following "one"
         cost = base_cost + rule_knower_cost 
 
         num_extra_memorizations = 0
@@ -354,13 +354,15 @@ end
 function distance_between_specs(spec1, spec2, relate_factor=0.0)
     dist = 0
     for k in keys(spec1)
-        if spec1[k] != spec2[k]
-            dist += 0.25
+        if spec1[k] != spec2[k] && !((spec1[k] isa AbstractString) && (spec2[k] isa AbstractString) && occursin("not", spec1[k]) && occursin("not", spec2[k])) && !occursin("blur", k) && !occursin("list_syntax", k) && !occursin("unknown", k) && !occursin("give_n", k) && !occursin("quantifier", k)
+            dist += 0.75
         end
     end
     s = 0
-    if dist != 0 
-        if count(x -> x == true, collect(values(spec1))) > count(x -> x == true, collect(values(spec2)))
+    if dist != 0
+        num_non_default_spec1 = count(k -> spec1[k] != default_spec[k] && !(spec1[k] isa Dict), collect(keys(spec1))) 
+        num_non_default_spec2 = count(k -> spec2[k] != default_spec[k] && !(spec2[k] isa Dict), collect(keys(spec2))) 
+        if num_non_default_spec1 > num_non_default_spec2
             s = 1 
         else
             s = -1
@@ -370,7 +372,7 @@ function distance_between_specs(spec1, spec2, relate_factor=0.0)
             if !(spec1["three_definition"] in ["set.value == 3"])
                 dist = dist * 10
             else
-                dist += 15 - 15 * relate_factor # 200 - 199.5 * relate_factor
+                dist += 18 - 16 * relate_factor # 200 - 199.5 * relate_factor
             end
         end
 
@@ -553,12 +555,12 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
 
     three_knower_stage_reached = false
     three_knower_stage_intervention_made = false
-    relate_factors = []
+    global relate_factors = []
     max_lot_indexes = [1]
     max_lots = [language_names_pretty[1]]
     curr_distribution = map(x -> 0.0, 1:length(language_names))
     curr_distribution[1] = 1.0
-    all_distributions = []
+    global all_distributions = []
     push!(all_distributions, curr_distribution)
     for t in 0:time_step_unit:num_time_steps*time_step_unit
 
