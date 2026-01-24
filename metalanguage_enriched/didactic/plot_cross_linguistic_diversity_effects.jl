@@ -1,4 +1,6 @@
-include("plot_stage4_morphology.jl")
+model_file_name = "plot_stage5_extra_hypotheses.jl"
+model_file_name = "plot_stage4_morphology.jl"
+include(model_file_name)
 
 (individual_dist_plot, 
 grouped_dist_plot, 
@@ -16,7 +18,7 @@ two_arrival_time) = run_test("english", false)
 english_plots = [individual_dist_plot, dist_plot, max_lot_plot]
 english_arrival_times = [one_arrival_time, two_arrival_time, CP_arrival_time]
 
-include("plot_stage4_morphology.jl")
+include(model_file_name)
 (individual_dist_plot, 
 grouped_dist_plot, 
 accuracy_plot, 
@@ -33,7 +35,7 @@ two_arrival_time) = run_test("slovenian", false)
 slovenian_plots = [individual_dist_plot, dist_plot, max_lot_plot]
 slovenian_arrival_times = [one_arrival_time, two_arrival_time, CP_arrival_time]
 
-include("plot_stage4_morphology.jl")
+include(model_file_name)
 (individual_dist_plot, 
 grouped_dist_plot, 
 accuracy_plot, 
