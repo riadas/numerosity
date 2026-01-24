@@ -195,11 +195,11 @@ end
 # cultural_counting_emphasis_large_number = 0.25 # 0.25 / 0.025
 
 function compute_counting_task_proportion(task_dict, cultural_counting_emphasis_small_number, cultural_counting_emphasis_large_number)
-    total_tasks = sum(map(k -> task_dict[k], [keys(task_dict)...]))
+    total_tasks = 121 #sum(map(k -> task_dict[k], [keys(task_dict)...]))
     counting_tasks_small_number = sum(map(k -> task_dict[k], filter(x -> x in ["give_2", "give_3"], [keys(task_dict)...])))
     individual_counting_proportions = map(n -> n < 4 ? 
         cultural_counting_emphasis_small_number * task_dict["give_$(n)"] : 
-        cultural_counting_emphasis_large_number * task_dict["give_$(n)"] * 1/n * 0.5,
+        cultural_counting_emphasis_large_number * task_dict["give_$(n)"] * 2.5/n * 0.25,
     2:10) ./ total_tasks
     sum(individual_counting_proportions)
 end
@@ -250,7 +250,7 @@ function compute_num_tasks(dataset)
     sum(map(k -> dataset[k], [keys(dataset)...]))
 end
 
-function compute_accuracies_efficient(dataset, normalized=true)
+function compute_accuracies_efficient(dataset, normalized=true, intervention=false)
     total_tasks = compute_num_tasks(dataset)
     accuracies = []
     for language_name in language_names
@@ -267,7 +267,7 @@ function compute_accuracies_efficient(dataset, normalized=true)
 
         if normalized
             overall_accuracy = overall_accuracy / total_tasks # / total tasks
-        else
+        elseif !intervention
             overall_accuracy = overall_accuracy * compute_num_tasks(test_name_to_task_dict["english"][1]) / total_tasks
         end
         
@@ -571,22 +571,24 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
             if intervention_small 
                 # low number 
                 task_dict["give_1"] += 0
-                task_dict["give_2"] += 7
-                task_dict["give_3"] += 7
+                task_dict["give_2"] += 0
+                task_dict["give_3"] += 3
     
                 if intervention_count 
                     cultural_counting_emphasis_small_number = 0.5
+                else
+                    cultural_counting_emphasis_small_number *= 1.35
                 end
 
             else
                 # high number 
-                task_dict["give_4"] += 2
-                task_dict["give_5"] += 2 
-                task_dict["give_6"] += 2 
-                task_dict["give_7"] += 2
-                task_dict["give_8"] += 2 
-                task_dict["give_9"] += 2 
-                task_dict["give_10"] += 2
+                task_dict["give_4"] += 0
+                task_dict["give_5"] += 0 
+                task_dict["give_6"] += 0 
+                task_dict["give_7"] += 0
+                task_dict["give_8"] += 1 
+                task_dict["give_9"] += 1 
+                task_dict["give_10"] += 1
 
                 if intervention_count 
                     cultural_counting_emphasis_large_number = 0.5
@@ -599,7 +601,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
             # cultural_counting_emphasis_large_number = 0.5
 
             # recompute accuracies and counting_task_proportion
-            global accuracies = compute_accuracies_efficient(task_dict, normalized)
+            global accuracies = compute_accuracies_efficient(task_dict, normalized, intervention)
 
             global counting_task_proportion = compute_counting_task_proportion(task_dict, cultural_counting_emphasis_small_number, cultural_counting_emphasis_large_number)
         end

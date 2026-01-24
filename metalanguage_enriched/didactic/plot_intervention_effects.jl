@@ -1,7 +1,10 @@
 # compute baseline CP arrival time
-include("plot_stage3.jl")
+# model_file_name = "plot_stage3.jl"
+model_file_name = "plot_stage4_morphology.jl"
+
+include(model_file_name)
 test_name = "english"
-baseline_CP_arrival_time = run_test(test_name, false)[end]
+baseline_CP_arrival_time = run_test(test_name, false)[end - 2]
 
 # compute CP arrival time given interventions at the three-knower stage
 intervention_arrival_times = []
@@ -12,17 +15,28 @@ intervention_params = [
     (true, true),
     (false, true),
 ]
-labels = ["low number\nwords", "high number\nwords", "low number\ncounts", "high number\ncounts"]
+labels = [
+    "low number\nwords", 
+    "high number\nwords", 
+    "low number\ncounts", 
+    "high number\ncounts"
+]
 
 counting_task_proportions = []
+relate_factor_reaches_one = []
+all_relate_factors = []
+push!(relate_factor_reaches_one, findall(x -> x == 1.0, relate_factors) != [] ? findall(x -> x == 1.0, relate_factors)[1] : relate_factors[end])
+push!(all_relate_factors, relate_factors)
 for i in 1:length(intervention_params)
-    include("plot_stage3.jl")
+    include(model_file_name)
     ip = intervention_params[i]
     low_param, count_param = ip
-    arrival_time = run_test(test_name, false, true, low_param, count_param)[end]
+    arrival_time = run_test(test_name, false, true, low_param, count_param)[end - 2]
     println("""$(replace(labels[i], "\n" => " ")): $(arrival_time)""")
     push!(intervention_arrival_times, arrival_time)
     push!(counting_task_proportions, counting_task_proportion)
+    push!(relate_factor_reaches_one, findall(x -> x == 1.0, relate_factors) != [] ? findall(x -> x == 1.0, relate_factors)[1] : -1)
+    push!(all_relate_factors, relate_factors)
 end
 
 println(labels)

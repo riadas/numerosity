@@ -60,12 +60,12 @@ language_name_to_spec["L3.5"] = L35_spec
 english_dataset = Dict([
     "give_1" => 40, # = GiveN("one") 40 / 80
     "give_2" => 20, # = GiveN("two") 20 / 40
-    "give_3" => 10, # = GiveN("three")
+    "give_3" => 9, # = GiveN("three")
     "give_4" => 5, # = GiveN("four")
-    "give_5" => 2, # = GiveN("five")
+    "give_5" => 3, # = GiveN("five")
     "give_6" => 2, # = GiveN("six")
     "give_7" => 2, # = GiveN("seven")
-    "give_8" => 2, # = GiveN("eight")
+    "give_8" => 1, # = GiveN("eight")
     "give_9" => 1, # = GiveN("nine")
     "give_10" => 1, # = GiveN("ten")
 
@@ -205,7 +205,7 @@ function compute_counting_task_proportion(task_dict, cultural_counting_emphasis_
     counting_tasks_small_number = sum(map(k -> task_dict[k], filter(x -> x in ["give_2", "give_3"], [keys(task_dict)...])))
     individual_counting_proportions = map(n -> n < 4 ? 
         cultural_counting_emphasis_small_number * task_dict["give_$(n)"] : 
-        cultural_counting_emphasis_large_number * task_dict["give_$(n)"] * 1/n * 0.5,
+        cultural_counting_emphasis_large_number * task_dict["give_$(n)"] * 2.5/n * 0.25,
     2:10) ./ total_tasks
     sum(individual_counting_proportions)
 end
@@ -268,9 +268,9 @@ function compute_base_accuracies(dataset, full_reset=true)
     base_accuracies
 end
 
-# base_accuracies = compute_base_accuracies(dataset)
+# base_accuracies = compute_base_accuracies(english_dataset)
 
-function compute_accuracies_efficient(dataset, normalized=true, recompute_base=false, quantifier_structure_weight=0.7)
+function compute_accuracies_efficient(dataset, normalized=true, recompute_base=false, intervention=false, quantifier_structure_weight=0.7)
     if recompute_base 
         global base_accuracies = compute_base_accuracies(dataset, false)
     end
@@ -318,7 +318,7 @@ function compute_accuracies_efficient(dataset, normalized=true, recompute_base=f
             else
                 overall_quantifier_accuracy = overall_quantifier_accuracy / total_quantifier_tasks # / total tasks
             end
-        else
+        elseif !intervention
             overall_number_accuracy = overall_number_accuracy * compute_num_tasks(test_name_to_task_dict["english"][1], "number") / total_number_tasks
             if total_quantifier_tasks != 0
                 overall_quantifier_accuracy = overall_quantifier_accuracy * 2 / total_quantifier_tasks
@@ -389,7 +389,7 @@ function compute_memory_cost(spec)
 
         for n in 1:number_defn_count 
             if n % 3 == 0 
-                addend = addend * 4/5
+                addend = addend * 6/7
             end
             cost += addend
         end
@@ -468,7 +468,7 @@ function distance_between_specs(spec1, spec2, relate_factor=0.0)
             if !(spec1["three_definition"] in ["set.value == 3"])
                 dist = dist * 10
             else
-                dist += 16 - 15 * relate_factor # 200 - 199.5 * relate_factor
+                dist += 12.5 - 12.4 * relate_factor # 200 - 199.5 * relate_factor
             end
         end
 
@@ -552,7 +552,7 @@ accuracies = []
 memory_costs = []
 computation_costs = []
 relate_task_proportion = 0.0
-relate_factors = []
+global relate_factors = []
 all_distributions = []
 counting_task_proportion = -1.0
 
@@ -576,6 +576,10 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
     # handle diverse quantifier structure
     new_language_names = []
     new_language_specs = []
+
+    @show language_names
+    global language_names = filter(l -> !(occursin("L00", l) || occursin("L01", l) || occursin("L02", l)), language_names)
+    global language_names_pretty = filter(l -> !(occursin("L00", l) || occursin("L01", l) || occursin("L02", l)), language_names_pretty)
 
     if quantifier_structure != []
         println("hello")
@@ -628,9 +632,11 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
             spec = new_language_specs[i]
             language_name_to_spec[name] = spec
         end
-        
+        @show language_names 
+        @show new_language_names
         global language_names = [map(x -> split(x, "_")[1], new_language_names)..., language_names...]
         global language_names_pretty = [new_language_names..., language_names_pretty...]
+        @show language_names
 
         # handle colors 
         if length(new_language_names) == 1
@@ -643,7 +649,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
 
         # recompute accuracies 
         quantifier_task_proportion = cultural_counting_emphasis_small_number == test_name_to_task_dict["english"][2] ? 0.7 : 0.75
-        global accuracies = compute_accuracies_efficient(task_dict, normalized, true, quantifier_task_proportion)
+        global accuracies = compute_accuracies_efficient(task_dict, normalized, true, false, quantifier_task_proportion) # TEMP: true, false
     else
         global accuracies = compute_accuracies_efficient(task_dict, normalized)
     end
@@ -670,20 +676,22 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
         0.48, # L0: non-knower
         0.50, # L1: 1-knower
         0.50, # 2-knower
-        0.70, # 2-knower, approx # previously: 0.50
+        0.60, # 2-knower, approx # previously: 0.50
         0.50, # 3-knower
-        0.70, # 3-knower, approx # previously: 0.50
+        0.60, # 3-knower, approx # previously: 0.50
         0.50, # 4-knower
-        0.70, # CP-knower
-        0.675, # CP-mapper
-        0.65, # CP-unit-knower
+        0.565, # CP-knower
+        0.54, # CP-mapper
+        0.515, # CP-unit-knower
     ]
+    @show new_language_names
     if new_language_names != []
         computational_costs = [map(x -> computational_costs[1], new_language_names)..., computational_costs...]
         if length(new_language_names) == 3 
             computational_costs[3] = computational_costs[4] # one-knower, but no dual
         end
     end
+    @show computational_costs
 
     # three bar plots: accuracy, memory_cost, computational_cost
     # one line plot: utilities over time
@@ -744,7 +752,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
 
     three_knower_stage_reached = false
     three_knower_stage_intervention_made = false
-    relate_factors = []
+    global relate_factors = []
     max_lot_indexes = [1]
     max_lots = [language_names_pretty[1]]
     curr_distribution = map(x -> 0.0, 1:length(language_names))
@@ -760,22 +768,24 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
             if intervention_small 
                 # low number 
                 task_dict["give_1"] += 0
-                task_dict["give_2"] += 7
-                task_dict["give_3"] += 7
+                task_dict["give_2"] += 0
+                task_dict["give_3"] += 1
     
                 if intervention_count 
                     cultural_counting_emphasis_small_number = 0.5
+                else
+                    cultural_counting_emphasis_small_number *= 1.35
                 end
 
             else
                 # high number 
-                task_dict["give_4"] += 2
-                task_dict["give_5"] += 2 
-                task_dict["give_6"] += 2 
-                task_dict["give_7"] += 2
-                task_dict["give_8"] += 2 
-                task_dict["give_9"] += 2 
-                task_dict["give_10"] += 2
+                task_dict["give_4"] += 0
+                task_dict["give_5"] += 0 
+                task_dict["give_6"] += 0 
+                task_dict["give_7"] += 0
+                task_dict["give_8"] += 0
+                task_dict["give_9"] += 0 
+                task_dict["give_10"] += 1
 
                 if intervention_count 
                     cultural_counting_emphasis_large_number = 0.5
@@ -788,14 +798,14 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
             # cultural_counting_emphasis_large_number = 0.5
 
             # recompute accuracies and counting_task_proportion
-            global accuracies = compute_accuracies_efficient(task_dict, normalized)
+            global accuracies = compute_accuracies_efficient(task_dict, normalized, intervention)
 
             global counting_task_proportion = compute_counting_task_proportion(task_dict, cultural_counting_emphasis_small_number, cultural_counting_emphasis_large_number)
         end
 
         utility_sum = sum(map(x -> utility_base^(compute_utility(x, t)), 1:length(language_names)))
         
-        relate_factor = t * counting_task_proportion * 200
+        relate_factor = t * counting_task_proportion * 30
         relate_factor = relate_factor > 1 ? 1 : relate_factor
         push!(relate_factors, relate_factor)
 
@@ -888,6 +898,8 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
     end
 
     CP_arrival_time = "CP knower" in max_lots ? findall(x -> x == "CP knower", max_lots)[1] : -1
+    one_arrival_time = (intersect(["one knower", "one knower singular no dual"], max_lots) != []) ? findall(x -> x == "one knower" || x == "one knower singular no dual", max_lots)[1] : -1
+    two_arrival_time = "two knower" in max_lots ? findall(x -> x == "two knower", max_lots)[1] : -1
 
     (individual_dist_plot, # individual task distribution 
     grouped_dist_plot, # grouped/categorized task distribution
@@ -898,21 +910,25 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
     max_utility_plot, # maximum utility evolution plot
     dist_plot, # posterior evolution plot
     max_lot_plot, # MAP evolution plot
-    CP_arrival_time)
+    CP_arrival_time, 
+    one_arrival_time, 
+    two_arrival_time)
 end
 
-(individual_dist_plot, 
-grouped_dist_plot, 
-accuracy_plot, 
-memory_cost_plot, 
-computation_cost_plot, 
-line_plot, 
-max_utility_plot, 
-dist_plot, 
-max_lot_plot,
-CP_arrival_time) = run_test("english", false)
+# (individual_dist_plot, 
+# grouped_dist_plot, 
+# accuracy_plot, 
+# memory_cost_plot, 
+# computation_cost_plot, 
+# line_plot, 
+# max_utility_plot, 
+# dist_plot, 
+# max_lot_plot,
+# CP_arrival_time,
+# one_arrival_time,
+# two_arrival_time) = run_test("english", false)
 
-plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500))
+# plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500))
 
 # relate_factor = 0.0
 # distances = []
