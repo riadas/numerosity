@@ -101,10 +101,16 @@ slovenian_dataset["give_2"] = slovenian_dataset["give_2"] * 2
 chinese_dataset = deepcopy(english_dataset)
 chinese_dataset["give_1"] = chinese_dataset["give_1"] * 0.8
 
+japanese_dataset = deepcopy(chinese_dataset)
+
+russian_dataset = deepcopy(english_dataset)
+
 test_name_to_task_dict = Dict([
     "english" => (english_dataset, 0.25, 0.25, ["singular"]), # cultural_counting_emphasis_small_number, cultural_counting_emphasis_large_number
     "slovenian" => (slovenian_dataset, 0.05, 0.05, ["singular", "dual"]),
-    "chinese" => (chinese_dataset, 0.25, 0.25, [])
+    "chinese" => (chinese_dataset, 0.25, 0.25, []),
+    "japanese" => (japanese_dataset, 0.25, 0.25, []),
+    "russian" => (russian_dataset, 0.25, 0.25, ["singular"])
 ])
 
 function plot_individual_task_distribution(test_name_="english")
@@ -485,7 +491,7 @@ function distance_between_specs(spec1, spec2, relate_factor=0.0)
         if ("dual" in keys(spec1["quantifier_structure"])) && !spec1["quantifier_structure"]["dual"] && spec1["two_definition"] != "set.value == 2" && spec2["two_definition"] == "set.value == 2"
             dist = dist * 100
         elseif ("dual" in keys(spec1["quantifier_structure"])) && spec1["quantifier_structure"]["dual"] && spec1["two_definition"] != "set.value == 2" && spec2["two_definition"] == "set.value == 2"
-            dist = dist / 1.5           
+            dist = dist / 1.5 
         end
 
     end
@@ -598,6 +604,14 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
             push!(new_language_names, new_intermediate_language)
             push!(new_language_specs, new_intermediate_spec)
 
+            # # add singular, one-knower, no dual language
+            # new_intermediate_language2 = "L02_one_knower_singular_no_dual"
+            # new_intermediate_spec2 = deepcopy(L1_spec)
+            # new_intermediate_spec2["quantifier_structure"] = deepcopy(quantifier_structure_spec)
+
+            # push!(new_language_names, new_intermediate_language2)
+            # push!(new_language_specs, new_intermediate_spec2)
+
             quantifier_structure_spec["dual"] = true
 
             # add dual task
@@ -623,6 +637,8 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
             global modified_colors = [:lightskyblue1, modified_colors...]
         elseif length(new_language_names) == 2
             global modified_colors = [:lightskyblue1, :deepskyblue1, modified_colors...]
+        elseif length(new_language_names) == 3
+            global modified_colors = [:lightskyblue1, :deepskyblue1, :dodgerblue1, modified_colors...]
         end
 
         # recompute accuracies 
@@ -664,6 +680,9 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
     ]
     if new_language_names != []
         computational_costs = [map(x -> computational_costs[1], new_language_names)..., computational_costs...]
+        if length(new_language_names) == 3 
+            computational_costs[3] = computational_costs[4] # one-knower, but no dual
+        end
     end
 
     # three bar plots: accuracy, memory_cost, computational_cost
@@ -857,7 +876,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
 
     # plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500))
 
-    println("1 knower becomes MAP: $("one knower" in max_lots ? findall(x -> x == "one knower", max_lots)[1] : -1)")
+    println("1 knower becomes MAP: $("one knower" in max_lots ? findall(x -> x == "one knower" || x == "one knower singular no dual", max_lots)[1] : -1)")
     println("2 knower becomes MAP: $("two knower" in max_lots ? findall(x -> x == "two knower", max_lots)[1] : -1)")
     println("3 knower becomes MAP: $("three knower" in max_lots ? findall(x -> x == "three knower", max_lots)[1] : -1)")
     println("CP knower becomes MAP: $("CP knower" in max_lots ? findall(x -> x == "CP knower", max_lots)[1] : -1)")
@@ -891,7 +910,7 @@ line_plot,
 max_utility_plot, 
 dist_plot, 
 max_lot_plot,
-CP_arrival_time) = run_test("chinese", false)
+CP_arrival_time) = run_test("english", false)
 
 plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500))
 

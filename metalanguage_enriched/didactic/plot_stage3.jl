@@ -725,6 +725,8 @@ CP_arrival_time) = run_test("english", false)
 
 plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500))
 
+println(findall(x -> x == 1.0, relate_factors)[1])
+
 # relate_factor = 0.0
 # distances = []
 # for l1 in language_names 

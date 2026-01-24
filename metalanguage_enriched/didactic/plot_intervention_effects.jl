@@ -14,6 +14,7 @@ intervention_params = [
 ]
 labels = ["low number\nwords", "high number\nwords", "low number\ncounts", "high number\ncounts"]
 
+counting_task_proportions = []
 for i in 1:length(intervention_params)
     include("plot_stage3.jl")
     ip = intervention_params[i]
@@ -21,7 +22,12 @@ for i in 1:length(intervention_params)
     arrival_time = run_test(test_name, false, true, low_param, count_param)[end]
     println("""$(replace(labels[i], "\n" => " ")): $(arrival_time)""")
     push!(intervention_arrival_times, arrival_time)
+    push!(counting_task_proportions, counting_task_proportion)
 end
+
+println(labels)
+println(intervention_arrival_times)
+println(counting_task_proportions)
 
 # intervention plot
 x = (1 .- intervention_arrival_times ./ baseline_CP_arrival_time) * 100
