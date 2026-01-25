@@ -9,7 +9,7 @@ include(model_file_name)
 test_name = "english"
 println("INTERVENTION REPEAT 0")
 baseline_CP_arrival_time = run_test(test_name, false)[end - 2]
-# baseline_CP_arrival_time = 991
+# baseline_CP_arrival_time = 1199
 # compute CP arrival time given interventions at the three-knower stage
 intervention_arrival_times = []
 
@@ -48,9 +48,9 @@ end
 println(labels)
 println(intervention_arrival_times)
 println(counting_task_proportions)
-
+@show intervention_arrival_times
 # intervention plot
 x = (1 .- intervention_arrival_times ./ baseline_CP_arrival_time) * 100
 # x = (1 .- [1053, 949, 944, 949] ./ 1106) * 100
-bar(labels, x, legend=false, xtickfontsize=12, xlabel="Intervention Type", ylabel="% Reduction", ytickfontsize=12, yguidefontsize=18, xguidefontsize=18, title="Percent Reduction in CP-Knower Acquisition Time\nvs. Intervention Type", titlefontsize=21, annotationfontsize=1, ylims=(0.0, 10.0), size=(1000, 1000))
+bar(labels, x, legend=false, xtickfontsize=12, xlabel="Intervention Type", ylabel="% Reduction", ytickfontsize=12, yguidefontsize=18, xguidefontsize=18, title="Percent Reduction in CP-Knower Acquisition Time\nvs. Intervention Type", titlefontsize=21, annotationfontsize=1, ylims=(0.0, 3.0), size=(1000, 1000))
 annotate!(labels, x, map(a -> "$(round(a, digits=2))%", x), :bottom)

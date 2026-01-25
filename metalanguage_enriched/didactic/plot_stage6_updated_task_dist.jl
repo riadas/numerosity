@@ -59,19 +59,19 @@ language_name_to_spec["L3.5"] = L35_spec
 # fully ANS-based specs
 LX1_spec = deepcopy(L1_spec)
 LX1_spec["one_definition"] = "set.value in [1, 2]"
-LX1_spec["two_definition"] = "set.value != 1"
+# LX1_spec["two_definition"] = "set.value != 1"
 
 LX2_spec = deepcopy(L2_spec)
 LX2_spec["one_definition"] = "set.value in [1, 2]"
 LX2_spec["two_definition"] = "set.value in [2, 3]"
-LX2_spec["three_definition"] = "!(set.value in [1, 2])"
+# LX2_spec["three_definition"] = "!(set.value in [1, 2])"
 
 
 LX3_spec = deepcopy(L3_spec)
 LX3_spec["one_definition"] = "set.value in [1, 2]"
 LX3_spec["two_definition"] = "set.value in [2, 3]"
 LX3_spec["three_definition"] = "set.value in [2, 3, 4]"
-LX3_spec["four_definition"] = "!(set.value in [1, 2, 3])"
+# LX3_spec["four_definition"] = "!(set.value in [1, 2, 3])"
 
 LX4_spec = deepcopy(L1_spec)
 LX4_spec["one_definition"] = "set.value in [1, 2]"
@@ -90,24 +90,24 @@ alt_pi_language_names = []
 alt_pi_language_names_pretty = []
 alt_pi_language_specs = []
 # tups = collect(Iterators.product(map(x -> collect(1:5), 1:4)...))
-tups = collect(Iterators.product([1, 5], [2, 5], [3, 5], [4, 5]))
-tups = filter(t -> !(t in [
-                            (5, 5, 5, 5),
-                            (1, 5, 5, 5),
-                            (1, 2, 5, 5),
-                            (1, 2, 3, 5),
-                            (1, 2, 3, 4),
-                            ]),
-                    tups)
-
-# tups = collect(Iterators.product(map(x -> collect(1:4), 1:3)...))
+# tups = collect(Iterators.product([1, 5], [2, 5], [3, 5], [4, 5]))
 # tups = filter(t -> !(t in [
-#                             (4, 4, 4),
-#                             (1, 4, 4),
-#                             (1, 2, 4),
-#                             (1, 2, 3),
+#                             (5, 5, 5, 5),
+#                             (1, 5, 5, 5),
+#                             (1, 2, 5, 5),
+#                             (1, 2, 3, 5),
+#                             (1, 2, 3, 4),
 #                             ]),
 #                     tups)
+
+tups = collect(Iterators.product(map(x -> collect(1:4), 1:3)...))
+tups = filter(t -> !(t in [
+                            (4, 4, 4),
+                            (1, 4, 4),
+                            (1, 2, 4),
+                            (1, 2, 3),
+                            ]),
+                    tups)
 
 for i in 1:length(tups)
     tup = tups[i]
@@ -280,12 +280,13 @@ end
 # cultural_counting_emphasis_small_number = 0.25 # 0.25 / 0.025
 # cultural_counting_emphasis_large_number = 0.25 # 0.25 / 0.025
 
-function compute_counting_task_proportion(task_dict, cultural_counting_emphasis_small_number, cultural_counting_emphasis_large_number)
+function compute_counting_task_proportion(task_dict, cultural_counting_emphasis_small_number, cultural_counting_emphasis_large_number, intervention=false)
     total_tasks = sum(map(k -> task_dict[k], [keys(task_dict)...]))
+    # total_tasks = intervention ? sum(map(k -> test_name_to_task_dict["english"][1][k], [keys(test_name_to_task_dict["english"][1])...])) : sum(map(k -> task_dict[k], [keys(task_dict)...]))
     counting_tasks_small_number = sum(map(k -> task_dict[k], filter(x -> x in ["give_2", "give_3"], [keys(task_dict)...])))
     individual_counting_proportions = map(n -> n < 4 ? 
         cultural_counting_emphasis_small_number * task_dict["give_$(n)"] : 
-        cultural_counting_emphasis_large_number * task_dict["give_$(n)"] * 2.5/n * 0.25,
+        cultural_counting_emphasis_large_number * task_dict["give_$(n)"] * 2.5/n * 0.1, # 0.25
     2:10) ./ total_tasks
     sum(individual_counting_proportions)
 end
@@ -592,7 +593,7 @@ function distance_between_specs(spec1, spec2, relate_factor=0.0)
             if !((spec1["three_definition"] in ["set.value == 3"]) && (spec1["two_definition"] in ["set.value == 2"]) && (spec1["one_definition"] in ["set.value == 1"]))
                 dist = dist * 10
             else
-                dist += 14.5 - 14.4 * relate_factor # 200 - 199.5 * relate_factor
+                dist += 16.5 - 16.4 * relate_factor # 200 - 199.5 * relate_factor
             end
         end
 
@@ -676,7 +677,7 @@ accuracies = []
 memory_costs = []
 computation_costs = []
 relate_task_proportion = 0.0
-global relate_factors = []
+global relate_factors = [0.0]
 all_distributions = []
 counting_task_proportion = -1.0
 
@@ -889,7 +890,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
 
     three_knower_stage_reached = false
     three_knower_stage_intervention_made = false
-    global relate_factors = []
+    global relate_factors = [0.0]
     max_lot_indexes = [1]
     max_lots = [language_names_pretty[1]]
     curr_distribution = map(x -> 0.0, 1:length(language_names))
@@ -909,9 +910,9 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
                 task_dict["give_3"] += 1
     
                 if intervention_count 
-                    cultural_counting_emphasis_small_number = 0.5
+                    cultural_counting_emphasis_small_number = 0.9
                 else
-                    cultural_counting_emphasis_small_number *= 1.15
+                    cultural_counting_emphasis_small_number *= 2
                 end
 
             else
@@ -925,7 +926,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
                 task_dict["give_10"] += 1
 
                 if intervention_count 
-                    cultural_counting_emphasis_large_number = 0.5
+                    cultural_counting_emphasis_large_number = 0.25
                 end
 
             end
@@ -942,7 +943,8 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
 
         utility_sum = sum(map(x -> utility_base^(compute_utility(x, t)), 1:length(language_names)))
         
-        relate_factor = t * counting_task_proportion * 35
+        relate_factor = relate_factors[end]
+        relate_factor = relate_factor + time_step_unit * counting_task_proportion * 40
         relate_factor = relate_factor > 1 ? 1 : relate_factor
         push!(relate_factors, relate_factor)
 

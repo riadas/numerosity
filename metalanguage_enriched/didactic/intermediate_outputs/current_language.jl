@@ -7,6 +7,9 @@ function singular(set::Exact)::Bool
 end
 
 
+function dual(set::Exact)::Bool
+    set.value == 2
+end
 
 
 function one(set::Union{Exact, Blur})::Bool

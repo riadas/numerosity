@@ -3,7 +3,7 @@ abstract type Task end
 abstract type NumberRep end
 abstract type CountRep end
 
-no_guess_prob = 1.0 #0.9999999
+no_guess_prob = 1.0 - 10^(-16) # 1.0 #0.9999999
 
 global parallel_individuation_limit = 4
 global ANS_ratio = 3/2
@@ -185,7 +185,7 @@ function give_n(n::String, prob=false)
         if Exact(n) in matches 
             prob ? no_guess_prob * 1/length(matches) : sample(matches)
         else
-            1 - no_guess_prob
+            (1 - no_guess_prob) * 1/10
         end
     else
         prob ? 1/max_num : sample(map(i -> Exact(i), 1:max_num))
@@ -245,7 +245,7 @@ function how_many(set::NumberRep, prob=false)
         if actual_word in matches 
             prob ? no_guess_prob * 1/length(matches) : sample(matches)
         else
-            1 - no_guess_prob
+            (1 - no_guess_prob) * 1/10
         end
     else
         prob ? 1/max_num : sample(collect(keys(number_words_to_nums)))
