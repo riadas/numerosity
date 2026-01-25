@@ -164,11 +164,11 @@ english_dataset = Dict([
     "how_many_9_blur" => 1.0, #  = HowMany(Blur(9))
     "how_many_10_blur" => 1.0, #  = HowMany(Blur(10))
 
-    "more_1" => 2.0, 
-    "more_2" => 2.0,
+    "more_1" => 1.0, 
+    "more_2" => 1.0,
 
-    "unit_add_1" => 5.0, 
-    "unit_add_2" => 5.0,
+    "unit_add_1" => 4.0, 
+    "unit_add_2" => 4.0,
 ])
 
 slovenian_dataset = deepcopy(english_dataset)
@@ -592,7 +592,7 @@ function distance_between_specs(spec1, spec2, relate_factor=0.0)
             if !((spec1["three_definition"] in ["set.value == 3"]) && (spec1["two_definition"] in ["set.value == 2"]) && (spec1["one_definition"] in ["set.value == 1"]))
                 dist = dist * 10
             else
-                dist += 16.5 - 16.4 * relate_factor # 200 - 199.5 * relate_factor
+                dist += 14.5 - 14.4 * relate_factor # 200 - 199.5 * relate_factor
             end
         end
 
@@ -942,7 +942,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
 
         utility_sum = sum(map(x -> utility_base^(compute_utility(x, t)), 1:length(language_names)))
         
-        relate_factor = t * counting_task_proportion * 45
+        relate_factor = t * counting_task_proportion * 35
         relate_factor = relate_factor > 1 ? 1 : relate_factor
         push!(relate_factors, relate_factor)
 
@@ -1063,7 +1063,7 @@ end
 # max_lot_plot,
 # CP_arrival_time,
 # one_arrival_time,
-# two_arrival_time) = run_test("slovenian", false)
+# two_arrival_time) = run_test("english", false)
 
 # plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500))
 
