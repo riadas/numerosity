@@ -1,7 +1,8 @@
 # compute baseline CP arrival time
 # model_file_name = "plot_stage3.jl"
 # model_file_name = "plot_stage4_morphology.jl"
-model_file_name = "plot_stage5_extra_hypotheses.jl"
+# model_file_name = "plot_stage5_extra_hypotheses.jl"
+model_file_name = "plot_stage6_updated_task_dist.jl"
 # global repeat_suffix = "_repeat2"
 
 include(model_file_name)
@@ -13,14 +14,14 @@ baseline_CP_arrival_time = run_test(test_name, false)[end - 2]
 intervention_arrival_times = []
 
 intervention_params = [
-    (true, false),
-    (false, false),
+    # (true, false),
+    # (false, false),
     (true, true),
     (false, true),
 ]
 labels = [
-    "low number\nwords", 
-    "high number\nwords", 
+    # "low number\nwords", 
+    # "high number\nwords", 
     "low number\ncounts", 
     "high number\ncounts"
 ]

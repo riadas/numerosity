@@ -1,5 +1,6 @@
-model_file_name = "plot_stage5_extra_hypotheses.jl"
-model_file_name = "plot_stage4_morphology.jl"
+# model_file_name = "plot_stage5_extra_hypotheses.jl"
+# model_file_name = "plot_stage4_morphology.jl"
+model_file_name = "plot_stage6_updated_task_dist.jl"
 include(model_file_name)
 
 (individual_dist_plot, 
@@ -52,10 +53,10 @@ two_arrival_time) = run_test("chinese", false)
 chinese_plots = [individual_dist_plot, dist_plot, max_lot_plot]
 chinese_arrival_times = [one_arrival_time, two_arrival_time, CP_arrival_time]
 
-all_plots = plot(english_plots[1], slovenian_plots[1], chinese_plots[1],
+all_plots = plot(plot(english_plots[1], ylims=(0.0, 0.65)), plot(slovenian_plots[1], ylims=(0.0, 0.65)), plot(chinese_plots[1], ylims=(0.0, 0.65)),
                  english_plots[2], slovenian_plots[2], chinese_plots[2],
                  english_plots[3], slovenian_plots[3], chinese_plots[3],
-                layout=(3, 3), size=(2400, 1200), dpi=600, linewidth=2, xlabel=false)
+                layout=(3, 3), size=(2400, 1200), dpi=600, linewidth=3, xlabel="", ylabel="")
 
 println("english, slovenian, chinese")
 println("one, two, CP")
@@ -77,7 +78,7 @@ one_knower_relative_rates = [one_knower_relative_rates[1], one_knower_relative_r
 CP_induction_rate_plot = bar(x_labels, cp_induction_relative_rates, color = collect(palette(:tab10))[6], size=(600, 525), legend=false, xlabel="Language Category", ylabel="% Change", title="% Arrival Time Change of\nCP Induction", ylims=(-25, 75))
 annotate!(x_labels[1:1], cp_induction_relative_rates[1:1], map(x -> "$(round(x, digits=1))%", cp_induction_relative_rates[1:1]), :bottom, fontsize=6)
 annotate!(x_labels[2:2], cp_induction_relative_rates[2:2], map(x -> "$(round(x, digits=1))%", cp_induction_relative_rates[2:2]), :bottom)
-annotate!(x_labels[3:end], cp_induction_relative_rates[3:end], map(x -> "$(round(x, digits=1))%", cp_induction_relative_rates[3:end]), :bottom)
+annotate!(x_labels[3:end], cp_induction_relative_rates[3:end], map(x -> "$(round(x, digits=1))%", cp_induction_relative_rates[3:end]), :top)
 
 one_knower_rate_plot = bar(x_labels, one_knower_relative_rates, color = collect(palette(:tab10))[2], size=(600, 525), legend=false, xlabel="Language Category", ylabel="% Change", title="% Arrival Time Change of\nOne Knower Stage", ylims=(-25, 75))
 annotate!(x_labels[1:1], one_knower_relative_rates[1:1], map(x -> "$(round(x, digits=1))%", one_knower_relative_rates[1:1]), :bottom)
