@@ -1,3 +1,6 @@
+
+
+
 include("../run_inference.jl")
 repeat_suffix = ""
 # DEFINE LANGUAGES
@@ -85,53 +88,53 @@ language_name_to_spec["LX1.5"] = LX4_spec
 language_names = [language_names..., "LX1", "LX2", "LX3", "LX1.5"]
 language_names_pretty = [language_names_pretty..., "LX1_ans_1", "LX2_ans_2", "LX3_ans_3", "LX1.5_ans_relate"]
 
-# alternative PI-based specs
-alt_pi_language_names = []
-alt_pi_language_names_pretty = []
-alt_pi_language_specs = []
-# tups = collect(Iterators.product(map(x -> collect(1:5), 1:4)...))
-# tups = collect(Iterators.product([1, 5], [2, 5], [3, 5], [4, 5]))
+# # alternative PI-based specs
+# alt_pi_language_names = []
+# alt_pi_language_names_pretty = []
+# alt_pi_language_specs = []
+# # tups = collect(Iterators.product(map(x -> collect(1:5), 1:4)...))
+# # tups = collect(Iterators.product([1, 5], [2, 5], [3, 5], [4, 5]))
+# # tups = filter(t -> !(t in [
+# #                             (5, 5, 5, 5),
+# #                             (1, 5, 5, 5),
+# #                             (1, 2, 5, 5),
+# #                             (1, 2, 3, 5),
+# #                             (1, 2, 3, 4),
+# #                             ]),
+# #                     tups)
+
+# tups = collect(Iterators.product(map(x -> collect(1:4), 1:3)...))
 # tups = filter(t -> !(t in [
-#                             (5, 5, 5, 5),
-#                             (1, 5, 5, 5),
-#                             (1, 2, 5, 5),
-#                             (1, 2, 3, 5),
-#                             (1, 2, 3, 4),
+#                             (4, 4, 4),
+#                             (1, 4, 4),
+#                             (1, 2, 4),
+#                             (1, 2, 3),
 #                             ]),
 #                     tups)
 
-tups = collect(Iterators.product(map(x -> collect(1:4), 1:3)...))
-tups = filter(t -> !(t in [
-                            (4, 4, 4),
-                            (1, 4, 4),
-                            (1, 2, 4),
-                            (1, 2, 3),
-                            ]),
-                    tups)
+# for i in 1:length(tups)
+#     tup = tups[i]
+#     spec = deepcopy(L0_spec) 
+#     undefined_subset_numbers = findall(x -> x == 4, tup)
+#     defined_subset_numbers = findall(x -> x != 4, tup)
+#     undefined_definition_list = "[$(join(map(x -> nums_to_number_words[x], defined_subset_numbers), ", "))]"
+#     undefined_definition = "not(map(x -> Base.invokelatest(x, set), $(undefined_definition_list)))"
 
-for i in 1:length(tups)
-    tup = tups[i]
-    spec = deepcopy(L0_spec) 
-    undefined_subset_numbers = findall(x -> x == 4, tup)
-    defined_subset_numbers = findall(x -> x != 4, tup)
-    undefined_definition_list = "[$(join(map(x -> nums_to_number_words[x], defined_subset_numbers), ", "))]"
-    undefined_definition = "not(map(x -> Base.invokelatest(x, set), $(undefined_definition_list)))"
+#     for n in defined_subset_numbers 
+#         spec["$(nums_to_number_words[n])_definition"] = "set.value == $(tup[n])"
+#     end
 
-    for n in defined_subset_numbers 
-        spec["$(nums_to_number_words[n])_definition"] = "set.value == $(tup[n])"
-    end
+#     for n in [undefined_subset_numbers..., collect(4:10)...]
+#         spec["$(nums_to_number_words[n])_definition"] = undefined_definition
+#     end
+#     base_name = "LXP$(i)"
+#     push!(alt_pi_language_names, base_name)
+#     push!(alt_pi_language_names_pretty, "$(base_name)_$(join(tup))")
+#     language_name_to_spec[base_name] = spec
+# end
 
-    for n in [undefined_subset_numbers..., collect(4:10)...]
-        spec["$(nums_to_number_words[n])_definition"] = undefined_definition
-    end
-    base_name = "LXP$(i)"
-    push!(alt_pi_language_names, base_name)
-    push!(alt_pi_language_names_pretty, "$(base_name)_$(join(tup))")
-    language_name_to_spec[base_name] = spec
-end
-
-push!(language_names, alt_pi_language_names...)
-push!(language_names_pretty, alt_pi_language_names_pretty...)
+# push!(language_names, alt_pi_language_names...)
+# push!(language_names_pretty, alt_pi_language_names_pretty...)
 
 # TASKS
 english_dataset = Dict([
@@ -164,8 +167,8 @@ english_dataset = Dict([
     "how_many_9_blur" => 1.0, #  = HowMany(Blur(9))
     "how_many_10_blur" => 1.0, #  = HowMany(Blur(10))
 
-    "more_1" => 1.0, 
-    "more_2" => 1.0,
+    "more_1" => 0.5, 
+    "more_2" => 0.5,
 
     "unit_add_1" => 4.0, 
     "unit_add_2" => 4.0,
@@ -176,7 +179,7 @@ slovenian_dataset["give_1"] = slovenian_dataset["give_1"] * 1.5
 slovenian_dataset["give_2"] = slovenian_dataset["give_2"] * 1.5
 
 chinese_dataset = deepcopy(english_dataset)
-chinese_dataset["give_1"] = chinese_dataset["give_1"] * 0.8
+chinese_dataset["give_1"] = chinese_dataset["give_1"] * 0.9
 
 japanese_dataset = deepcopy(chinese_dataset)
 
@@ -184,7 +187,7 @@ russian_dataset = deepcopy(english_dataset)
 
 test_name_to_task_dict = Dict([
     "english" => (english_dataset, 0.25, 0.25, ["singular"]), # cultural_counting_emphasis_small_number, cultural_counting_emphasis_large_number
-    "slovenian" => (slovenian_dataset, 0.05, 0.05, ["singular", "dual"]),
+    "slovenian" => (slovenian_dataset, 0.20, 0.20, ["singular", "dual"]), # 0.05, 0.05
     "chinese" => (chinese_dataset, 0.25, 0.25, []),
     "japanese" => (japanese_dataset, 0.25, 0.25, []),
     "russian" => (russian_dataset, 0.25, 0.25, ["singular"])
@@ -512,9 +515,9 @@ function compute_memory_cost(spec)
         println(number_defn_count)
 
         for n in 1:number_defn_count 
-            if n % 3 == 0 
-                addend = addend * 6/7
-            end
+            # if n % 3 == 0 
+            #     addend = addend * 6/7
+            # end
             cost += addend
         end
 
@@ -578,6 +581,7 @@ function distance_between_specs(spec1, spec2, relate_factor=0.0)
             end
         end
     end
+    dist = dist * 3
     s = 0
     if dist != 0 
         # TODO: add "not" check here
@@ -593,7 +597,10 @@ function distance_between_specs(spec1, spec2, relate_factor=0.0)
             if !((spec1["three_definition"] in ["set.value == 3"]) && (spec1["two_definition"] in ["set.value == 2"]) && (spec1["one_definition"] in ["set.value == 1"]))
                 dist = dist * 10
             else
-                dist += 16.5 - 16.4 * relate_factor # 200 - 199.5 * relate_factor
+                dist = 30.5 - 30.4 * relate_factor # 200 - 199.5 * relate_factor
+                if !spec1["ANS_reconciled"] && spec2["ANS_reconciled"]
+                    dist += 5
+                end
             end
         end
 
@@ -653,21 +660,33 @@ end
 
 function compute_utility(language_index, t)
     unscaled_utility = gamma_c*t*accuracies[language_index] - cost_c *(memory_costs[language_index] + computational_costs[language_index] - 0.50)
-    0.3 * (unscaled_utility - 0.7)
+    # @show unscaled_utility
+    0.3 * (unscaled_utility - 0.7) - 20
 end
 
 # PARAMS
 
 transition_prob_identity_base = 0.975
 transition_prob_identity_rate = 0.004 # 0.0003
-transition_prob_base = 100.0 # 2
+transition_prob_base = 9.0 # 2
 utility_base = 10000000000000.0
 
-time_step_unit = 0.0005 # 0.00005 
-num_time_steps = 3000
+time_step_unit = 0.1 # 0.0005 # 0.00005 
+num_time_steps = 1000
 
-gamma_c = 1.0 # 1.2
-cost_c = 0.015 # 0.008
+gamma_c = 1.2 # 1.0 # 1.2
+cost_c = 0.5 # 0.015 # 0.008
+
+# transition_prob_identity_base = 0.975
+# transition_prob_identity_rate = 0.004 # 0.0003
+# transition_prob_base = 100.0 # 2
+# utility_base = 10000000000000.0
+
+# time_step_unit = 0.0005 # 0.00005 
+# num_time_steps = 3000
+
+# gamma_c = 1.0 # 1.2
+# cost_c = 0.015 # 0.008
 
 params_dict = Dict([
 
@@ -787,13 +806,13 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
     #     0.00, # L0: non-knower
     #     0.15, # L1: 1-knower
     #     0.30, # 2-knower
-    #     # 0.34, # 2-knower, approx
-    #     0.39, # 3-knower
-    #     # 0.39, # 3-knower, approx 
-    #     0.48, # 4-knower
+    #     0.34, # 2-knower, approx
+    #     0.45, # 3-knower
+    #     0.49, # 3-knower, approx 
+    #     0.6, # 4-knower
     #     0.35, # CP-knower # 0.41
     #     0.5, # CP-mapper
-    #     0.59, # CP-unit-knower # normalized setting: 0.7
+    #     0.65, # CP-unit-knower # normalized setting: 0.7
     # ]
     global memory_costs = compute_all_memory_costs()
     global memory_costs = memory_costs .* 2
@@ -815,8 +834,8 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
     ]
 
     modified_colors = [modified_colors..., :darkgray, :gray76, :gray86, :gray95]
-    modified_colors = [modified_colors..., map(x -> :burlywood2, tups)...]
-    computational_costs = [computational_costs..., map(x -> 0.50, tups)...]
+    # modified_colors = [modified_colors..., map(x -> :burlywood2, tups)...]
+    # computational_costs = [computational_costs..., map(x -> 0.50, tups)...]
     @show new_language_names
     if new_language_names != []
         computational_costs = [map(x -> computational_costs[1], new_language_names)..., computational_costs...]
@@ -850,7 +869,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
     max_yvals = 0.0
     min_yvals = 0.0
     for i in 1:length(language_names)
-        y_vals = map(x -> gamma_c*x*accuracies[i] - cost_c *(memory_costs[i] + computational_costs[i] - 0.50), x_vals)
+        y_vals = map(x -> compute_utility(i, x), x_vals)
         max_yvals = maximum([max_yvals, maximum(y_vals)])
         min_yvals = minimum([min_yvals, minimum(y_vals)])
 
@@ -910,9 +929,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
                 task_dict["give_3"] += 1
     
                 if intervention_count 
-                    cultural_counting_emphasis_small_number = 0.9
-                else
-                    cultural_counting_emphasis_small_number *= 2
+                    cultural_counting_emphasis_small_number = 0.5
                 end
 
             else
@@ -926,7 +943,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
                 task_dict["give_10"] += 1
 
                 if intervention_count 
-                    cultural_counting_emphasis_large_number = 0.25
+                    cultural_counting_emphasis_large_number = 0.5
                 end
 
             end
@@ -941,10 +958,10 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
             global counting_task_proportion = compute_counting_task_proportion(task_dict, cultural_counting_emphasis_small_number, cultural_counting_emphasis_large_number)
         end
 
-        utility_sum = sum(map(x -> utility_base^(compute_utility(x, t)), 1:length(language_names)))
+        # utility_sum = sum(map(x -> utility_base^(compute_utility(x, t)), 1:length(language_names)))
         
         relate_factor = relate_factors[end]
-        relate_factor = relate_factor + time_step_unit * counting_task_proportion * 40
+        relate_factor = relate_factor + time_step_unit * counting_task_proportion * 0.45
         relate_factor = relate_factor > 1 ? 1 : relate_factor
         push!(relate_factors, relate_factor)
 
@@ -952,18 +969,25 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
         next_distribution = map(x -> 0.0, 1:length(language_names))
         for i in 1:length(language_names)
             total = 0.0
-            utility = utility_base^(compute_utility(i, t)) / utility_sum
+            utility = utility_base^(compute_utility(i, t))
             for j in 1:length(language_names)
                 transition_prob = transition_probabilities[j][i]
                 # if (j in [1, 2, 3, 4]) &&  (i in [8, 9, 10])
                 #     transition_prob = 0
                 # end
+                normalizer = 0.0
+                for k in 1:length(language_names)
+                    transition_prob_k = transition_probabilities[j][k]
+                    utility_k = utility_base^(compute_utility(k, t))
+                    normalizer += transition_prob_k * utility_k
+                end
+                total += curr_distribution[j] * (transition_prob * utility / normalizer)
+                # total += transition_prob * utility * curr_distribution[j]
 
-                total += transition_prob * utility * curr_distribution[j]
             end
             next_distribution[i] = total
         end
-        next_distribution = next_distribution ./ sum(next_distribution)
+        # next_distribution = next_distribution ./ sum(next_distribution)
         index = findall(v -> v == maximum(next_distribution), next_distribution)[1]
         push!(max_lot_indexes, index)
         push!(max_lots, join(split(language_names_pretty[index], "_")[2:end], " "))
@@ -1025,7 +1049,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
 
     # plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500))
 
-    println("1 knower becomes MAP: $("one knower" in max_lots ? findall(x -> x == "one knower" || x == "one knower singular no dual", max_lots)[1] : -1)")
+    println("1 knower becomes MAP: $((intersect(["one knower", "one knower singular no dual"], max_lots) != []) ? findall(x -> x == "one knower" || x == "one knower singular no dual", max_lots)[1] : -1)")
     println("2 knower becomes MAP: $("two knower" in max_lots ? findall(x -> x == "two knower", max_lots)[1] : -1)")
     println("3 knower becomes MAP: $("three knower" in max_lots ? findall(x -> x == "three knower", max_lots)[1] : -1)")
     println("CP knower becomes MAP: $("CP knower" in max_lots ? findall(x -> x == "CP knower", max_lots)[1] : -1)")
@@ -1065,9 +1089,9 @@ end
 # max_lot_plot,
 # CP_arrival_time,
 # one_arrival_time,
-# two_arrival_time) = run_test("english", false)
+# two_arrival_time) = run_test("chinese", false)
 
-# plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500))
+# plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500), legend=false)
 
 # relate_factor = 0.0
 # distances = []
