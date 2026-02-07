@@ -162,7 +162,7 @@ english_dataset = Dict([
 
     "how_many_5_blur" => 2.0, #  = HowMany(Blur(5))
     "how_many_6_blur" => 2.0, #  = HowMany(Blur(6))
-    "how_many_7_blur" => 2.0, #  = HowMany(Blur(7))
+    "how_many_7_blur" => 1.0, #  = HowMany(Blur(7))
     "how_many_8_blur" => 1.0, #  = HowMany(Blur(8))
     "how_many_9_blur" => 1.0, #  = HowMany(Blur(9))
     "how_many_10_blur" => 1.0, #  = HowMany(Blur(10))
@@ -179,7 +179,7 @@ slovenian_dataset["give_1"] = slovenian_dataset["give_1"] * 1.5
 slovenian_dataset["give_2"] = slovenian_dataset["give_2"] * 1.5
 
 chinese_dataset = deepcopy(english_dataset)
-chinese_dataset["give_1"] = chinese_dataset["give_1"] * 0.9
+chinese_dataset["give_1"] = chinese_dataset["give_1"] * 0.925
 
 japanese_dataset = deepcopy(chinese_dataset)
 
@@ -599,7 +599,7 @@ function distance_between_specs(spec1, spec2, relate_factor=0.0)
             else
                 dist = 30.5 - 30.4 * relate_factor # 200 - 199.5 * relate_factor
                 if !spec1["ANS_reconciled"] && spec2["ANS_reconciled"]
-                    dist += 5
+                    dist += 1.5
                 end
             end
         end
@@ -788,7 +788,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
         elseif length(new_language_names) == 2
             global modified_colors = [:lightskyblue1, :deepskyblue1, modified_colors...]
         elseif length(new_language_names) == 3
-            global modified_colors = [:lightskyblue1, :deepskyblue1, :dodgerblue1, modified_colors...]
+            global modified_colors = [:lightskyblue1, :deepskyblue1, :darkorange3, modified_colors...]
         end
 
         # recompute accuracies 
@@ -961,12 +961,24 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
         # utility_sum = sum(map(x -> utility_base^(compute_utility(x, t)), 1:length(language_names)))
         
         relate_factor = relate_factors[end]
-        relate_factor = relate_factor + time_step_unit * counting_task_proportion * 0.45
+        relate_factor = relate_factor + time_step_unit * counting_task_proportion * 0.40 # 0.45
         relate_factor = relate_factor > 1 ? 1 : relate_factor
         push!(relate_factors, relate_factor)
 
         transition_probabilities, _ = plot_heatmap(relate_factor, t, "")
         next_distribution = map(x -> 0.0, 1:length(language_names))
+
+        normalizer_jk_dict = Dict()
+        for j in 1:length(language_names)
+            normalizer = 0.0
+            for k in 1:length(language_names)
+                transition_prob_k = transition_probabilities[j][k]
+                utility_k = utility_base^(compute_utility(k, t))
+                normalizer += transition_prob_k * utility_k
+            end
+            normalizer_jk_dict[j] = normalizer
+        end
+
         for i in 1:length(language_names)
             total = 0.0
             utility = utility_base^(compute_utility(i, t))
@@ -975,19 +987,13 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
                 # if (j in [1, 2, 3, 4]) &&  (i in [8, 9, 10])
                 #     transition_prob = 0
                 # end
-                normalizer = 0.0
-                for k in 1:length(language_names)
-                    transition_prob_k = transition_probabilities[j][k]
-                    utility_k = utility_base^(compute_utility(k, t))
-                    normalizer += transition_prob_k * utility_k
-                end
+                normalizer = normalizer_jk_dict[j]
                 total += curr_distribution[j] * (transition_prob * utility / normalizer)
                 # total += transition_prob * utility * curr_distribution[j]
-
             end
             next_distribution[i] = total
         end
-        # next_distribution = next_distribution ./ sum(next_distribution)
+        next_distribution = next_distribution ./ sum(next_distribution)
         index = findall(v -> v == maximum(next_distribution), next_distribution)[1]
         push!(max_lot_indexes, index)
         push!(max_lots, join(split(language_names_pretty[index], "_")[2:end], " "))
@@ -1089,7 +1095,7 @@ end
 # max_lot_plot,
 # CP_arrival_time,
 # one_arrival_time,
-# two_arrival_time) = run_test("chinese", false)
+# two_arrival_time) = run_test("english", false)
 
 # plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500), legend=false)
 
