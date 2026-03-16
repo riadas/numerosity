@@ -63,6 +63,18 @@ function compute_likelihood(dataset)
     prob
 end
 
+function compute_computation_cost(dataset)
+    cost = 0.0
+    for task in keys(dataset)
+        _ = evaluate(task)
+        benchmark_results = @btimed evaluate($task) seconds=0.1 samples=10
+        # possible considerations: :time, :bytes, :alloc -- using just runtime (:time) for now
+        runtime = benchmark_results.alloc
+        cost += runtime * (dataset[task])
+    end
+    cost
+end
+
 # generate all combinations
 defined_exact_subset = [[], collect(combinations(1:4))...] # collect(combinations(1:max_num)) # 1:4
 raw_specs = collect(Iterators.product(defined_exact_subset, ["none", "count_passive", "count_active", "full_knower_compression"], [true, false], ["represent_unknown_base_definition", "represent_unknown_intermediate_definition"], [3, 4]))

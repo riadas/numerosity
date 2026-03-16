@@ -397,6 +397,106 @@ end
 
 # base_accuracies = compute_base_accuracies(english_dataset)
 
+function compute_base_computation_costs(dataset)
+    base_computation_costs = Dict()
+    reordered_language_names = [filter(x -> !occursin(".5", x), language_names)..., filter(x -> occursin(".5", x), language_names)...]
+    for language_name in reordered_language_names
+        base_computation_costs[language_name] = Dict()
+        if occursin("LXP", language_name)
+            # count number of number word defs
+            number_defn_count = 0
+            spec = language_name_to_spec[language_name]
+            for k in keys(spec)
+                if occursin("definition", k) && !occursin("blur", k) && !occursin("unknown", k) && !occursin("give_n", k)
+                    if !occursin("not", spec[k])
+                        println(spec[k])
+                        println(default_spec[k])
+                        number_defn_count += 1
+                    end
+                end
+            end
+
+            for task_name in keys(dataset)
+                base_computation_costs[language_name][task_name] = base_computation_costs["L$(number_defn_count)"][task_name]
+            end
+
+        elseif occursin(".5", language_name)
+            for task_name in keys(dataset)
+                if occursin("2.5", language_name) && task_name in ["give_1", "give_2", "how_many_1", "how_many_2"]
+                    base_computation_costs[language_name][task_name] = base_computation_costs["L2"][task_name]
+                elseif occursin("3.5", language_name) && task_name in ["give_1", "give_2", "give_3", "how_many_1", "how_many_2", "how_many_3"]
+                    base_computation_costs[language_name][task_name] = base_computation_costs["L3"][task_name]
+                else
+                    base_computation_costs[language_name][task_name] = base_computation_costs["L5"][task_name]
+                end
+            end
+        else 
+            # construct and load language
+            spec = language_name_to_spec[language_name]
+            language = generate_language(spec)
+            if language_name == "L00"
+                println(language)
+            end
+            open("metalanguage_enriched/didactic/intermediate_outputs/current_language$(repeat_suffix).jl", "w+") do f 
+                write(f, replace(language, "../../" => "../../../"))
+            end
+            include("intermediate_outputs/current_language.jl")
+
+            for task_name in keys(dataset)
+                println(task_name)
+                single_task_dataset = Dict([eval(Symbol(task_name)) => 1])
+
+                # evaluate language on tasks
+                cost = compute_computation_cost(single_task_dataset)
+                println(cost)
+                base_computation_costs[language_name][task_name] = cost
+            end
+
+        end
+    end
+    base_computation_costs
+end
+
+function compute_computation_costs_efficient(dataset)
+    costs = []
+    for language_name in language_names 
+        total_cost = 0.0
+        for task_name in keys(dataset)
+            cost = base_computation_costs[language_name][task_name]
+            if (occursin("give_", task_name) || occursin("how_many", task_name)) && !occursin("blur", task_name) 
+                num_word = nums_to_number_words[parse(Int, split(task_name, "_")[end])]
+                spec = language_name_to_spec[language_name]
+                if occursin("not", spec["$(num_word)_definition"]) && !spec["approx"] 
+                    cost = 0
+                end
+            end
+            total_cost += cost * dataset[task_name]
+        end
+        spec = language_name_to_spec[language_name]
+        if !(spec["full_knower_compression"] == default_spec["full_knower_compression"])
+            early_costs = base_computation_costs["L1"]["give_1"]
+            total_cost = (total_cost - early_costs) * 0.05 + early_costs
+        elseif spec["approx"]
+            if occursin("3.5", language_name)
+                early_costs = base_computation_costs["L3.5"]["give_1"] + base_computation_costs["L3.5"]["give_2"] + base_computation_costs["L3.5"]["give_3"] 
+            elseif occursin("2.5", language_name)
+                early_costs = base_computation_costs["L2.5"]["give_1"] + base_computation_costs["L2.5"]["give_2"]
+            elseif occursin("1.5", language_name)
+                early_costs = base_computation_costs["L1"]["give_1"]
+            end
+            total_cost = (total_cost - early_costs) * 0.05 + early_costs
+        end
+
+        push!(costs, total_cost)
+    end
+    costs
+end
+
+# x .* (0.565 - 0.48) .- 0.02 .+ 0.5^C
+
+base_computation_costs = compute_base_computation_costs(english_dataset)
+costs = compute_computation_costs_efficient(english_dataset)
+
 function compute_accuracies_efficient(dataset, normalized=true, recompute_base=false, intervention=false, quantifier_structure_weight=0.7)
     if recompute_base 
         global base_accuracies = compute_base_accuracies(dataset, false)
@@ -486,7 +586,7 @@ function compute_accuracies_efficient(dataset, normalized=true, recompute_base=f
     accuracies
 end
 
-function compute_memory_cost(spec)
+function compute_memory_cost(spec, param_effects_memory_mod=0.0)
     cost = 0.0
     addend = 0.15
     
@@ -528,7 +628,7 @@ function compute_memory_cost(spec)
         # CP-knower stage reached
         base_cost = addend # knowing meaning of just "one"
         rule_knower_cost = addend * 4/3 # knowing meaning of recursive rule following "one"
-        cost = base_cost + rule_knower_cost 
+        cost = base_cost + rule_knower_cost + param_effects_memory_mod
 
         num_extra_memorizations = 0
         if spec["ANS_reconciled"] != default_spec["ANS_reconciled"]
@@ -543,26 +643,71 @@ function compute_memory_cost(spec)
             if n % 2 == 0
                 addend = addend * 3/5
             end
-            cost += addend
+            cost += addend * 1.25
         end
     end
 
     cost
 end
 
-function compute_all_memory_costs() 
+function compute_all_memory_costs(param_effects_memory_mod=0.0) 
     costs = []
     for language_name in language_names
         println(language_name)
         spec = language_name_to_spec[language_name]
-        cost = compute_memory_cost(spec)
+        cost = compute_memory_cost(spec, param_effects_memory_mod)
         push!(costs, cost)
     end
     costs
 end
 
+function compute_computation_cost(spec)
+    cost = 0.0
+    addend = 0.02
+    recurse_addend = 0.065
+    number_defn_count = 0
+    for k in keys(spec)
+        if occursin("definition", k) && !occursin("blur", k) && !occursin("unknown", k) && !occursin("give_n", k)
+            if !occursin("not", spec[k])
+                println(spec[k])
+                println(default_spec[k])
+                number_defn_count += 1
+            end
+        end
+    end
+    println(number_defn_count)
 
-function distance_between_specs(spec1, spec2, relate_factor=0.0)
+    if number_defn_count > 0
+        cost += addend 
+    end
+
+    if !(spec["full_knower_compression"] == default_spec["full_knower_compression"]) || spec["approx"]
+        cost += recurse_addend
+    end
+
+    if spec["ANS_reconciled"] != default_spec["ANS_reconciled"]
+        cost -= 0.025
+    end
+
+    if spec["unit_add"] != default_spec["unit_add"]
+        cost -= 0.025
+    end
+
+    cost
+end
+
+function compute_all_computation_costs()
+    costs = []
+    for language_name in language_names
+        println(language_name)
+        spec = language_name_to_spec[language_name]
+        cost = compute_computation_cost(spec)
+        push!(costs, cost)
+    end
+    costs
+end
+
+function distance_between_specs(spec1, spec2, relate_factor=0.0; param_effects_distance_mod = 0.0)
     dist = 0
     for k in keys(spec1)
         if !occursin("quantifier", k)
@@ -594,8 +739,16 @@ function distance_between_specs(spec1, spec2, relate_factor=0.0)
         end
 
         if spec1["full_knower_compression"] != "full_knower_compression" && spec2["full_knower_compression"] == "full_knower_compression" 
+            # println("hey")
+            # @show dist
             if !((spec1["three_definition"] in ["set.value == 3"]) && (spec1["two_definition"] in ["set.value == 2"]) && (spec1["one_definition"] in ["set.value == 1"]))
-                dist = dist * 10
+                if spec1["two_definition"] in ["set.value == 2"]
+                    c = 10 - param_effects_distance_mod # (30.5 + log(2)/log(9)) / 22.5
+                    dist = (dist - (dist - 0.1 * c) * minimum([relate_factor * 2, 1.0])) * c
+                else
+                    dist = dist * 10
+                end
+                # dist = dist * 10
             else
                 dist = 30.5 - 30.4 * relate_factor # 200 - 199.5 * relate_factor
                 if !spec1["ANS_reconciled"] && spec2["ANS_reconciled"]
@@ -631,7 +784,7 @@ function distance_between_specs(spec1, spec2, relate_factor=0.0)
     (dist, s)
 end
 
-function plot_heatmap(relate_factor, t, title="")
+function plot_heatmap(relate_factor, t, title=""; param_effects_distance_mod = 0.0)
     transition_prob_identity = transition_prob_identity_base - transition_prob_identity_rate * t
     heatmap_values = []
     for l1 in language_names 
@@ -639,7 +792,7 @@ function plot_heatmap(relate_factor, t, title="")
         for l2 in language_names 
             l1_spec = language_name_to_spec[l1]
             l2_spec = language_name_to_spec[l2]
-            dist, s = distance_between_specs(l1_spec, l2_spec, relate_factor)
+            dist, s = distance_between_specs(l1_spec, l2_spec, relate_factor, param_effects_distance_mod = param_effects_distance_mod)
             if dist == 0
                 transition_prob = transition_prob_identity
             else
@@ -704,7 +857,7 @@ counting_task_proportion = -1.0
 old_colors = collect(palette(:tab10))
 modified_colors = [old_colors[1:3]..., old_colors[9], old_colors[4], old_colors[10], old_colors[5:8]...]
 
-function run_test(test_name_, normalized=true, intervention=false, intervention_small=false, intervention_count=false, save_fig_title="")
+function run_test(test_name_, normalized=true, intervention=false, intervention_small=false, intervention_count=false, save_fig_title=""; param_effects_memory_mod = 0.0, param_effects_distance_mod = 0.0)
     global test_name = test_name_
     # params_dict["test_name"] = test_name
 
@@ -793,7 +946,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
 
         # recompute accuracies 
         quantifier_task_proportion = cultural_counting_emphasis_small_number == test_name_to_task_dict["english"][2] ? 0.7 : 0.7
-        global accuracies = compute_accuracies_efficient(task_dict, normalized, true, false, quantifier_task_proportion) # TEMP -- original, stable value is: true, false
+        global accuracies = compute_accuracies_efficient(task_dict, normalized, false, false, quantifier_task_proportion) # TEMP -- original, stable value is: true, false
     else
         global accuracies = compute_accuracies_efficient(task_dict, normalized)
     end
@@ -814,36 +967,40 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
     #     0.5, # CP-mapper
     #     0.65, # CP-unit-knower # normalized setting: 0.7
     # ]
-    global memory_costs = compute_all_memory_costs()
+    global memory_costs = compute_all_memory_costs(param_effects_memory_mod)
     global memory_costs = memory_costs .* 2
-    global computational_costs = [ # TODO
-        0.48, # L0: non-knower
-        0.50, # L1: 1-knower
-        0.50, # 2-knower
-        0.565, # 2-knower, approx # previously: 0.50
-        0.50, # 3-knower
-        0.565, # 3-knower, approx # previously: 0.50
-        0.50, # 4-knower
-        0.565, # CP-knower
-        0.54, # CP-mapper
-        0.515, # CP-unit-knower
-        0.50, # LX1
-        0.50, # LX2
-        0.50, # LX3
-        0.565, # LX1.5
-    ]
+    global computational_costs = compute_all_computation_costs() .+ 0.48
+
+#     global computational_costs = [ # TODO
+#     0.48, # L0: non-knower
+#     0.50, # L1: 1-knower
+#     0.50, # 2-knower
+#     0.565, # 2-knower, approx # previously: 0.50
+#     0.50, # 3-knower
+#     0.565, # 3-knower, approx # previously: 0.50
+#     0.50, # 4-knower
+#     0.565, # CP-knower
+#     0.54, # CP-mapper
+#     0.515, # CP-unit-knower
+#     0.50, # LX1
+#     0.50, # LX2
+#     0.50, # LX3
+#     0.565, # LX1.5
+# ]
+
 
     modified_colors = [modified_colors..., :darkgray, :gray76, :gray86, :gray95]
     # modified_colors = [modified_colors..., map(x -> :burlywood2, tups)...]
     # computational_costs = [computational_costs..., map(x -> 0.50, tups)...]
-    @show new_language_names
-    if new_language_names != []
-        computational_costs = [map(x -> computational_costs[1], new_language_names)..., computational_costs...]
-        if length(new_language_names) == 3 
-            computational_costs[3] = computational_costs[4] # one-knower, but no dual
-        end
-    end
-    @show computational_costs
+
+    # @show new_language_names
+    # if new_language_names != []
+    #     computational_costs = [map(x -> computational_costs[1], new_language_names)..., computational_costs...]
+    #     if length(new_language_names) == 3 
+    #         computational_costs[3] = computational_costs[4] # one-knower, but no dual
+    #     end
+    # end
+    # @show computational_costs
 
     # three bar plots: accuracy, memory_cost, computational_cost
     # one line plot: utilities over time
@@ -965,7 +1122,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
         relate_factor = relate_factor > 1 ? 1 : relate_factor
         push!(relate_factors, relate_factor)
 
-        transition_probabilities, _ = plot_heatmap(relate_factor, t, "")
+        transition_probabilities, _ = plot_heatmap(relate_factor, t, "", param_effects_distance_mod = param_effects_distance_mod)
         next_distribution = map(x -> 0.0, 1:length(language_names))
 
         normalizer_jk_dict = Dict()
@@ -1076,29 +1233,33 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
     memory_cost_plot, # memory cost bar plot
     computation_cost_plot, # computation cost plot
     line_plot, # utility evolution plot
+    maxs, # utility evolution max LoTs
     max_utility_plot, # maximum utility evolution plot
     dist_plot, # posterior evolution plot
     max_lot_plot, # MAP evolution plot
+    max_lots, # MAP evolution max LoTs
     CP_arrival_time, 
     one_arrival_time, 
     two_arrival_time)
 end
 
-# (individual_dist_plot, 
-# grouped_dist_plot, 
-# accuracy_plot, 
-# memory_cost_plot, 
-# computation_cost_plot, 
-# line_plot, 
-# max_utility_plot, 
-# dist_plot, 
-# max_lot_plot,
-# CP_arrival_time,
-# one_arrival_time,
-# two_arrival_time) = run_test("english", false)
+(individual_dist_plot, 
+grouped_dist_plot, 
+accuracy_plot, 
+memory_cost_plot, 
+computation_cost_plot, 
+line_plot, 
+maxs,
+max_utility_plot, 
+dist_plot, 
+max_lot_plot,
+max_lots,
+CP_arrival_time,
+one_arrival_time,
+two_arrival_time) = run_test("english", false, param_effects_memory_mod = 0.0, param_effects_distance_mod = 0) # -0.3, +0.5
 
 # plot(individual_dist_plot, dist_plot, max_lot_plot, layout=(3, 1), size=(1000, 1500), legend=false)
-
+plot(line_plot, max_utility_plot, dist_plot, max_lot_plot, layout=(4,1), size=(1000, 1000), legend=false)
 # relate_factor = 0.0
 # distances = []
 # for l1 in language_names 

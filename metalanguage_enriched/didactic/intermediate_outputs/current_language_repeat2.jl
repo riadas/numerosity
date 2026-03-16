@@ -11,39 +11,39 @@ function one(set::Union{Exact, Blur})::Bool
 end
 
 function two(set::Union{Exact, Blur})::Bool
-    set.value in [2, 3]
+    not(map(x -> Base.invokelatest(x, set), [one]))
 end
 
 function three(set::Union{Exact, Blur})::Bool
-    set.value in [2, 3, 4]
+    not(map(x -> Base.invokelatest(x, set), [one]))
 end
 
 function four(set::Union{Exact, Blur})::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three]))
+    not(map(x -> Base.invokelatest(x, set), [one]))
 end
 
 function five(set::Exact)::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three]))
+    not(map(x -> Base.invokelatest(x, set), [one]))
 end
 
 function six(set::Exact)::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three]))
+    not(map(x -> Base.invokelatest(x, set), [one]))
 end
 
 function seven(set::Exact)::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three]))
+    not(map(x -> Base.invokelatest(x, set), [one]))
 end
 
 function eight(set::Exact)::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three]))
+    not(map(x -> Base.invokelatest(x, set), [one]))
 end
 
 function nine(set::Exact)::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three]))
+    not(map(x -> Base.invokelatest(x, set), [one]))
 end
 
 function ten(set::Exact)::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three]))
+    not(map(x -> Base.invokelatest(x, set), [one]))
 end
 
 # ANS
@@ -115,12 +115,6 @@ function unit_add(set::NumberRep, prob=false)
     if !prob 
         sample([nums_to_number_words[set.value + 1], nums_to_number_words[set.value + 2]])
     else
-        number_word1 = nums_to_number_words[set.value]
-        number_word2 = nums_to_number_words[set.value + 1]
-        for i in 1:5 
-            _ = Base.invokelatest(eval(Meta.parse(number_word1)), Exact(i))
-            _ = Base.invokelatest(eval(Meta.parse(number_word2)), Exact(i))
-        end
         0.5
     end
 end

@@ -16,6 +16,9 @@ struct Exact <: NumberRep
     value::Int
 end
 
+add_obj(x::Exact, y::Exact) = Exact(x.value + y.value)
+remove_obj(x::Exact, y::Exact) = Exact(x.value - y.value)
+
 struct Blur <: NumberRep
     value::Int
 end
@@ -330,6 +333,12 @@ function unit_add(set::NumberRep, prob=false)
     if !prob 
         sample([nums_to_number_words[set.value + 1], nums_to_number_words[set.value + 2]])
     else
+        number_word1 = nums_to_number_words[set.value]
+        number_word2 = nums_to_number_words[set.value + 1]
+        for i in 1:max_num 
+            _ = Base.invokelatest(eval(Meta.parse(number_word1)), Exact(i))
+            _ = Base.invokelatest(eval(Meta.parse(number_word2)), Exact(i))
+        end
         0.5
     end
 end
@@ -355,6 +364,12 @@ function more(words::Tuple{NumberWord, NumberWord}, prob=false)
         if length(xs) == 1 
             1.0
         else
+            num_word1 = nums_to_number_words[words[1].value]
+            num_word2 = nums_to_number_words[words[2].value]
+            for i in 1:5 
+                _ = Base.invokelatest(eval(Meta.parse(num_word1)), Exact(i))
+                _ = Base.invokelatest(eval(Meta.parse(num_word2)), Exact(i))
+            end
             0.5
         end
     end
