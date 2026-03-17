@@ -2,6 +2,7 @@ include("metalanguage.jl")
 include("../task_configs/generate_tasks.jl")
 using Plots
 using Combinatorics
+using BenchmarkTools
 
 global scale = 100000000000000000000000000000000000000000000000 # 0.000000001
 

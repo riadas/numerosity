@@ -19,6 +19,9 @@ end
 add_obj(x::Exact, y::Exact) = Exact(x.value + y.value)
 remove_obj(x::Exact, y::Exact) = Exact(x.value - y.value)
 
+add_objs(x::Exact, y::Exact) = add_obj(x, y)
+remove_objs(x::Exact, y::Exact) = remove_obj(x, y)
+
 struct Blur <: NumberRep
     value::Int
 end

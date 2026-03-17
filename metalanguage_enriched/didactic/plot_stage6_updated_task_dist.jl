@@ -4,137 +4,7 @@
 include("../run_inference.jl")
 repeat_suffix = ""
 # DEFINE LANGUAGES
-
-language_names = map(x -> "L$(x)", 0:7)
-language_names = [language_names[1:3]..., "L2.5", "L3", "L3.5", language_names[5:end]...]
-
-language_names_pretty = [
-    "L0_non_knower",
-    "L1_one_knower",
-    "L2_two_knower",
-    "L2.5_two_knower_approx",
-    "L3_three_knower",
-    "L3.5_three_knower_approx",
-    "L4_four_knower",
-    "L5_CP_knower",
-    "L6_CP_mapper",
-    "L7_CP_unit_knower",
-]
-
-# take initial specs from old run_inference.jl implementation
-L0_spec = specs[3] # non-knower
-L1_spec = specs[4] # one-knower
-L2_spec = specs[5] # two-knower
-L3_spec = specs[6] # three-knower
-
-# two-knower approx
-L25_spec = deepcopy(L2_spec)
-L25_spec["approx"] = true
-
-# three-knower approx
-L35_spec = deepcopy(L3_spec)
-L35_spec["approx"] = true
-
-# four-knower
-L4_spec = deepcopy(L3_spec)
-L4_spec["four_definition"] = "set.value == 4"
-
-# CP-unit-knower
-L7_spec = specs[end]
-L7_spec["parallel_individuation_limit"] = 4
-L7_spec["ANS_reconciled"] = true
-L7_spec["unit_add"] = "unit_add_final"
-
-# CP-mapper
-L6_spec = deepcopy(L7_spec)
-L6_spec["ANS_reconciled"] = true
-L6_spec["unit_add"] = "unit_add_base"
-
-# CP-knower
-L5_spec = deepcopy(L6_spec)
-L5_spec["ANS_reconciled"] = false
-L5_spec["unit_add"] = "unit_add_base"
-
-language_name_to_spec = Dict(map(i -> "L$(i)" => eval(Meta.parse("L$(i)_spec")), 0:7))
-language_name_to_spec["L2.5"] = L25_spec
-language_name_to_spec["L3.5"] = L35_spec
-
-# fully ANS-based specs
-LX1_spec = deepcopy(L1_spec)
-LX1_spec["one_definition"] = "set.value in [1, 2]"
-# LX1_spec["two_definition"] = "set.value != 1"
-
-LX2_spec = deepcopy(L2_spec)
-LX2_spec["one_definition"] = "set.value in [1, 2]"
-LX2_spec["two_definition"] = "set.value in [2, 3]"
-# LX2_spec["three_definition"] = "!(set.value in [1, 2])"
-
-
-LX3_spec = deepcopy(L3_spec)
-LX3_spec["one_definition"] = "set.value in [1, 2]"
-LX3_spec["two_definition"] = "set.value in [2, 3]"
-LX3_spec["three_definition"] = "set.value in [2, 3, 4]"
-# LX3_spec["four_definition"] = "!(set.value in [1, 2, 3])"
-
-LX4_spec = deepcopy(L1_spec)
-LX4_spec["one_definition"] = "set.value in [1, 2]"
-LX4_spec["approx"] = true
-
-language_name_to_spec["LX1"] = LX1_spec
-language_name_to_spec["LX2"] = LX2_spec
-language_name_to_spec["LX3"] = LX3_spec
-language_name_to_spec["LX1.5"] = LX4_spec
-
-language_names = [language_names..., "LX1", "LX2", "LX3", "LX1.5"]
-language_names_pretty = [language_names_pretty..., "LX1_ans_1", "LX2_ans_2", "LX3_ans_3", "LX1.5_ans_relate"]
-
-# # alternative PI-based specs
-# alt_pi_language_names = []
-# alt_pi_language_names_pretty = []
-# alt_pi_language_specs = []
-# # tups = collect(Iterators.product(map(x -> collect(1:5), 1:4)...))
-# # tups = collect(Iterators.product([1, 5], [2, 5], [3, 5], [4, 5]))
-# # tups = filter(t -> !(t in [
-# #                             (5, 5, 5, 5),
-# #                             (1, 5, 5, 5),
-# #                             (1, 2, 5, 5),
-# #                             (1, 2, 3, 5),
-# #                             (1, 2, 3, 4),
-# #                             ]),
-# #                     tups)
-
-# tups = collect(Iterators.product(map(x -> collect(1:4), 1:3)...))
-# tups = filter(t -> !(t in [
-#                             (4, 4, 4),
-#                             (1, 4, 4),
-#                             (1, 2, 4),
-#                             (1, 2, 3),
-#                             ]),
-#                     tups)
-
-# for i in 1:length(tups)
-#     tup = tups[i]
-#     spec = deepcopy(L0_spec) 
-#     undefined_subset_numbers = findall(x -> x == 4, tup)
-#     defined_subset_numbers = findall(x -> x != 4, tup)
-#     undefined_definition_list = "[$(join(map(x -> nums_to_number_words[x], defined_subset_numbers), ", "))]"
-#     undefined_definition = "not(map(x -> Base.invokelatest(x, set), $(undefined_definition_list)))"
-
-#     for n in defined_subset_numbers 
-#         spec["$(nums_to_number_words[n])_definition"] = "set.value == $(tup[n])"
-#     end
-
-#     for n in [undefined_subset_numbers..., collect(4:10)...]
-#         spec["$(nums_to_number_words[n])_definition"] = undefined_definition
-#     end
-#     base_name = "LXP$(i)"
-#     push!(alt_pi_language_names, base_name)
-#     push!(alt_pi_language_names_pretty, "$(base_name)_$(join(tup))")
-#     language_name_to_spec[base_name] = spec
-# end
-
-# push!(language_names, alt_pi_language_names...)
-# push!(language_names_pretty, alt_pi_language_names_pretty...)
+include("define_languages.jl")
 
 # TASKS
 english_dataset = Dict([
@@ -395,7 +265,7 @@ function compute_base_accuracies(dataset, full_reset=true)
     base_accuracies
 end
 
-# base_accuracies = compute_base_accuracies(english_dataset)
+base_accuracies = compute_base_accuracies(english_dataset)
 
 function compute_base_computation_costs(dataset)
     base_computation_costs = Dict()
@@ -494,8 +364,8 @@ end
 
 # x .* (0.565 - 0.48) .- 0.02 .+ 0.5^C
 
-base_computation_costs = compute_base_computation_costs(english_dataset)
-costs = compute_computation_costs_efficient(english_dataset)
+# base_computation_costs = compute_base_computation_costs(english_dataset)
+# costs = compute_computation_costs_efficient(english_dataset)
 
 function compute_accuracies_efficient(dataset, normalized=true, recompute_base=false, intervention=false, quantifier_structure_weight=0.7)
     if recompute_base 
@@ -946,7 +816,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
 
         # recompute accuracies 
         quantifier_task_proportion = cultural_counting_emphasis_small_number == test_name_to_task_dict["english"][2] ? 0.7 : 0.7
-        global accuracies = compute_accuracies_efficient(task_dict, normalized, false, false, quantifier_task_proportion) # TEMP -- original, stable value is: true, false
+        global accuracies = compute_accuracies_efficient(task_dict, normalized, true, false, quantifier_task_proportion) # TEMP -- original, stable value is: true, false
     else
         global accuracies = compute_accuracies_efficient(task_dict, normalized)
     end
@@ -969,38 +839,38 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
     # ]
     global memory_costs = compute_all_memory_costs(param_effects_memory_mod)
     global memory_costs = memory_costs .* 2
-    global computational_costs = compute_all_computation_costs() .+ 0.48
+    # global computational_costs = compute_all_computation_costs() .+ 0.48
 
-#     global computational_costs = [ # TODO
-#     0.48, # L0: non-knower
-#     0.50, # L1: 1-knower
-#     0.50, # 2-knower
-#     0.565, # 2-knower, approx # previously: 0.50
-#     0.50, # 3-knower
-#     0.565, # 3-knower, approx # previously: 0.50
-#     0.50, # 4-knower
-#     0.565, # CP-knower
-#     0.54, # CP-mapper
-#     0.515, # CP-unit-knower
-#     0.50, # LX1
-#     0.50, # LX2
-#     0.50, # LX3
-#     0.565, # LX1.5
-# ]
+    global computational_costs = [ # TODO
+    0.48, # L0: non-knower
+    0.50, # L1: 1-knower
+    0.50, # 2-knower
+    0.565, # 2-knower, approx # previously: 0.50
+    0.50, # 3-knower
+    0.565, # 3-knower, approx # previously: 0.50
+    0.50, # 4-knower
+    0.565, # CP-knower
+    0.54, # CP-mapper
+    0.515, # CP-unit-knower
+    0.50, # LX1
+    0.50, # LX2
+    0.50, # LX3
+    0.565, # LX1.5
+]
 
 
     modified_colors = [modified_colors..., :darkgray, :gray76, :gray86, :gray95]
     # modified_colors = [modified_colors..., map(x -> :burlywood2, tups)...]
     # computational_costs = [computational_costs..., map(x -> 0.50, tups)...]
 
-    # @show new_language_names
-    # if new_language_names != []
-    #     computational_costs = [map(x -> computational_costs[1], new_language_names)..., computational_costs...]
-    #     if length(new_language_names) == 3 
-    #         computational_costs[3] = computational_costs[4] # one-knower, but no dual
-    #     end
-    # end
-    # @show computational_costs
+    @show new_language_names
+    if new_language_names != []
+        computational_costs = [map(x -> computational_costs[1], new_language_names)..., computational_costs...]
+        if length(new_language_names) == 3 
+            computational_costs[3] = computational_costs[4] # one-knower, but no dual
+        end
+    end
+    @show computational_costs
 
     # three bar plots: accuracy, memory_cost, computational_cost
     # one line plot: utilities over time

@@ -18,7 +18,7 @@ struct ANS <: QuantityRepr
     meaning::ANS_val
 end
 
-add_obj(x::ANS) = ANS(ANS_val(Int(x) + sample(collect(1:3))))
+add_objs(x::ANS) = ANS(ANS_val(Int(x) + sample(collect(1:2))))
 compare(x1::ANS, x2::ANS, op::Symbol) = Int(x1) / Int(x2) > thresh || Int(x2) / Int(x1) > thresh ? eval(op)(Int(x1), Int(x2)) : sample([true, false])
 
 # number symbols (wrapper around primitive quantity representations)
@@ -27,13 +27,7 @@ struct NS
     meaning::QuantityRepr
 end
 
-NS(l::String) = eval(Meta.parse("$(l)_"))
-# NS(l, v::Union{Expr, Symbol}) = NS(l, Thunk{NS}(v))
-String(x::NS) = x.label
-add_obj(x::Exact, y::PI) = add_obj(x, Exact(Int(y.meaning)))
-remove_obj(x::Exact, y::PI) = remove_obj(x, Exact(Int(y.meaning)))
-Base.:(==)(x::Int, y::PI) = x == Int(y.meaning)
-Base.:(==)(x::PI, y::Int) = y == x
+include("type_system_casting_functions.jl")
 
 # primitive values
 ## PI values: x, xx, xxx, xxxx

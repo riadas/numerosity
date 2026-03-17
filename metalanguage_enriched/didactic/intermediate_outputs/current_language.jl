@@ -2,6 +2,9 @@ include("../../../base/base_semantics.jl")
 
 global parallel_individuation_limit = 4
 
+function singular(set::Exact)::Bool
+    set.value == 1
+end
 
 
 
@@ -11,39 +14,39 @@ function one(set::Union{Exact, Blur})::Bool
 end
 
 function two(set::Union{Exact, Blur})::Bool
-    set.value in [2, 3]
+    not(map(x -> Base.invokelatest(x, set), [one]))
 end
 
 function three(set::Union{Exact, Blur})::Bool
-    set.value in [2, 3, 4]
+    not(map(x -> Base.invokelatest(x, set), [one]))
 end
 
 function four(set::Union{Exact, Blur})::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three]))
+    not(map(x -> Base.invokelatest(x, set), [one]))
 end
 
 function five(set::Exact)::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three]))
+    not(map(x -> Base.invokelatest(x, set), [one]))
 end
 
 function six(set::Exact)::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three]))
+    not(map(x -> Base.invokelatest(x, set), [one]))
 end
 
 function seven(set::Exact)::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three]))
+    not(map(x -> Base.invokelatest(x, set), [one]))
 end
 
 function eight(set::Exact)::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three]))
+    not(map(x -> Base.invokelatest(x, set), [one]))
 end
 
 function nine(set::Exact)::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three]))
+    not(map(x -> Base.invokelatest(x, set), [one]))
 end
 
 function ten(set::Exact)::Bool
-    not(map(x -> Base.invokelatest(x, set), [one, two, three]))
+    not(map(x -> Base.invokelatest(x, set), [one]))
 end
 
 # ANS

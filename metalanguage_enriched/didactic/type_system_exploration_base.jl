@@ -4,7 +4,7 @@ abstract type QuantityRepr end
 
 # primitive value types
 @enum PI_val pi1=1 pi2=2 pi3=3 pi4=4
-@enum ANS_val ans1 ans2 ans3 ans4 ans5 ans6 ans7 ans8 ans9 ans10
+@enum ANS_val ans1=1 ans2=2 ans3=3 ans4=4 ans5=5 ans6=6 ans7=7 ans8=8 ans9=9 ans10=10
 
 struct NS end
 
@@ -39,6 +39,7 @@ end
 
 max_num = 10
 number_list = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
+
 
 function next_word(word::String)::String
     i = findall(x -> x == word, number_list)[1]

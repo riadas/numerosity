@@ -1,12 +1,17 @@
 
-inverse_rules = [("add_obj", "remove_obj"), 
-                 ("next_word", "prev_word")]
+include("type_system_exploration_base.jl")
 
-for r in inverse_rules[1:2] 
+inverse_rules = [("add_obj", "remove_obj"), 
+                 ("next_word", "prev_word"),
+                 ("add_objs", "remove_objs")]
+
+for r in inverse_rules[1:3] 
     push!(inverse_rules, (r[2], r[1]))
 end
 
 inverse_rules_dict = Dict(map(r -> r[1] => r[2], inverse_rules))
+
+number_list = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
 
 function compile(lang_str::String; pretty=true)
     # evaluate non-@-based code first
@@ -94,6 +99,9 @@ function compile(lang_str::String; pretty=true)
     end
 
     macro_generated_string = replace(replace(join(macro_generated_strings, "\n"), "    end" => "end"), "\t" => "    ")
+    
+    interface_string = ""
+    
     final_code = join([non_macro_segment, macro_generated_string], "\n")
     # final_code = macro_generated_string
 
@@ -101,7 +109,7 @@ function compile(lang_str::String; pretty=true)
         write(f, join(macro_generated_strings, "\n"))
     end
 
-    include("type_intermediate.jl")
+    # include("type_intermediate.jl")
     final_code
 end
 
@@ -156,12 +164,18 @@ function match_expand(macro_str::String, str::String)
                 index = all_indices[i]
                 line = all_lines[index]
                 var_name2 = replace(replace(replace(match_elements[1], "\$" => ""), "(" => ""), ")" => "")
-
-                if occursin("x_", line)
+                @show line
+                if !(occursin("add", line)) && (occursin("x_", line) || occursin("ANS", line))
                     var_name1 = filter(x -> x != "", split(all_lines[index - 1], " "))[2]
                     num_word = filter(x -> x != "", split(all_lines[index - 1], " "))[end][2:end-1]
                     val = eval(Meta.parse("$(num_word)_.$(field1)"))
-                    val = occursin(":(x", line) ? val.meaning : """$(join(map(x -> "x", 1:parse(Int, repr(val.meaning)[end]))))_"""
+                    if occursin(":(x", line) || occursin(":(ANS", line)
+                        val = val.meaning
+                    elseif occursin("x_", line)
+                        val = """$(join(map(x -> "x", 1:parse(Int, repr(val.meaning)[end]))))_"""
+                    else # only using ANS1 for now
+                        val = "ANS1_"
+                    end
                     # val = val isa PI_val ? PI(val) : val
                     s = "\t\"$(match_elements[2]).$(field2) == $(val)\""
                     NS_defn_segment = replace(NS_defn_segment, line => s)
@@ -174,8 +188,14 @@ function match_expand(macro_str::String, str::String)
 
                         new_func_name = split(split(line, "$(func_name)(")[end], ", ")[1]
                         extra_args = split(split(split(line, "$(func_name)(")[end], ", ")[end], ")")
-                        extra_args = map(y -> eval(Meta.parse("$(y)_")), filter(x -> x != "" && x != "\"", extra_args))
+                        extra_args = map(y -> eval(Meta.parse(y)), filter(x -> x != "" && x != "\"", extra_args))
                         extra_args = map(x -> replace(split(repr(x), ":")[end], ")" => ""), extra_args)
+
+                        if occursin("ans", extra_args[1])
+                            @show extra_args[1]
+                            num = extra_args[1][end]
+                            extra_args[1] = "ANS$(num)_"
+                        end
 
                         s = """\t\"$(new_func_name)($(inverse_func_name)($(match_elements[2]), $(join(extra_args, ", "))))\""""
                         s = replace(s, "($(var_name1))" => "($(var_name2))")
@@ -187,7 +207,7 @@ function match_expand(macro_str::String, str::String)
             end
 
             new_match_line = "\$($(NS_defn_segment))"
-            println(new_match_line)
+            # println(new_match_line)
             if occursin("else)", new_match_line)
                 new_match_line = replace(new_match_line, "else)" => "end)")
             end
@@ -229,13 +249,13 @@ end
 end
 
 # TEST
-lang_str = ""
-open("metalanguage_enriched/didactic/type_system_exploration_final.jl", "r") do f 
-    global lang_str = read(f, String)
-end
+# lang_str = ""
+# open("metalanguage_enriched/didactic/type_system_exploration_final.jl", "r") do f 
+#     global lang_str = read(f, String)
+# end
 
-final_code = compile(lang_str, pretty=true)
-println(final_code)
+# final_code = compile(lang_str, pretty=true)
+# println(final_code)
 
 # TODO
 # - implement relate_expand: DONE
@@ -247,6 +267,202 @@ println(final_code)
 # - make a visualization of the changing type systems / LoTs
 # --- could switch to the RN setting first before doing this, but could also possibly make a small/simple visualization for completion purposes
 
-# (1) later-greater princinple (compare), 
-# (2) unit add, 
-# (3) ANS-based definitions
+# (1) later-greater princinple (compare) -- DONE
+# (2) unit add -- DONE
+# (3) ANS-based definitions -- DONE
+
+function generate_type_system(spec)
+
+    base_type_definition = """struct NS
+    label::String 
+    meaning::QuantityRepr
+end"""
+
+    final_type_definition = """struct NS <: QuantityRepr
+    label::String 
+    meaning::Thunk{NS}
+end"""
+
+    base_number_definitions = """for word in number_list 
+[number_symbol_defns]
+    eval(Meta.parse(s))
+end"""
+
+    type_definition = ""
+    if (spec["full_knower_compression"] != default_spec["full_knower_compression"]) || spec["approx"]
+        type_definition = final_type_definition
+    else
+        type_definition = base_type_definition
+    end
+
+    word_defn_keys = ["one_definition", "two_definition", "three_definition", "four_definition"]
+    number_symbol_defns = ""
+    clauses = []
+    defn_count = count(x -> spec[x][1:3] == "set", word_defn_keys)
+    if defn_count != 0
+        defns = filter(x -> spec[x][1:3] == "set", word_defn_keys)
+        for i in 1:defn_count 
+            defn_name = defns[i]
+            num_word = split(defn_name, "_")[1]
+            start = i == 1 ? "if" : "elseif"
+            cond = "$(start) word == \"$(num_word)\""
+            defn = spec[defn_name]
+            if occursin("set.value ==", defn)
+                n = parse(Int, defn[end])
+                val = "$(join(map(x -> "x", 1:n)))_"
+            else # approx-based
+                val = ""
+                if occursin("[1, 2]", defn)
+                    val = "ANS1_"
+                elseif occursin("[2, 3]", defn)
+                    val = "ANS2_"
+                elseif occursin("[2, 3, 4]", defn)
+                    val = "ANS3_"
+                end
+            end
+            if spec["approx"] || spec["full_knower_compression"] != default_spec["full_knower_compression"]
+                val = ":($(val))"
+            end
+
+            assignment = """    s = \"\$(word)_ = NS(\\"$(num_word)\\", $(val))\""""
+            clause = "$(cond)\n    $(assignment)"
+            push!(clauses, clause)
+        end
+        push!(clauses, "else\n        break\n    end")
+    end
+
+    if spec["full_knower_compression"] != default_spec["full_knower_compression"] # standard full-knower compression
+        clauses = clauses[1:end-1]
+        final_clause = """else\n        s = \"\$(word)_ = NS(\\"\$(word)\\", :(add_obj(\$(prev_word(word)), one_)))\"\nend"""
+        push!(clauses, final_clause)        
+    end
+
+    if spec["approx"]
+        clauses = clauses[1:end-1]
+        final_clause = """else\n        s = \"\$(word)_ = NS(\\"\$(word)\\", :(add_objs(\$(prev_word(word)), ANS1_)))\"\nend"""
+        push!(clauses, final_clause)
+    end
+
+    if defn_count != 0 
+        number_symbol_defns = replace(base_number_definitions, "[number_symbol_defns]" => join(map(c -> "    $(c)", clauses), "\n"))
+    else
+        number_symbol_defns = ""
+    end
+    
+    compare_defn = ""
+    if spec["ANS_reconciled"]
+        compare_defn = "compare(x1::NS, x2::NS, op::Symbol) = compare(x1::NS, x2::NS, op::Symbol) = eval(op)(indexof(x1), indexof(x2))"
+    end
+
+    unit_add_defn = ""
+    if spec["unit_add"] != default_spec["unit_add"]
+        unit_add_defn = "unit_add(x::NS) = add_obj(x)"
+    end
+
+    new_components = join([type_definition, number_symbol_defns, compare_defn, unit_add_defn], "\n\n")
+    println("NEW COMPONENTS")
+    println(new_components)
+    println("\n")
+    
+    type_system_str = replace(type_system_template, "[number_symbol_type_definition]" => type_definition)
+    type_system_str = replace(type_system_str, "[number_symbol_defns]" => number_symbol_defns)
+    type_system_str = replace(type_system_str, "[compare_defn]" => compare_defn)
+    type_system_str = replace(type_system_str, "[unit_add_defn]" => unit_add_defn)
+
+    if compare_defn == "" && unit_add_defn == ""
+        type_system_str = replace(type_system_str, "## type interface: add and compare" => "")
+    end
+
+    compressed_repr = type_system_str
+
+    println("COMPRESSED REPRESENTATION")
+    println(compressed_repr)
+
+    compiled_repr = compile(compressed_repr, pretty=true)
+
+    (new_components, compressed_repr, compiled_repr)
+end
+
+type_system_template = """# ----- TYPE SYSTEM ----- 
+include("type_system_exploration_base.jl")
+using Random 
+
+# abstract quantity representation type
+abstract type QuantityRepr end 
+
+# core (primitive) type system 1: parallel individuation
+struct PI <: QuantityRepr
+    meaning::PI_val
+end
+
+## type interface: add and compare
+add_obj(x::PI) = PI(PI_val(Int(x) + 1)) # breaks >4
+compare(x1::PI, x2::PI, op::Symbol) = eval(op)(Int(x1), Int(x2))
+
+# core (primitive) type system 2: approximate number system
+struct ANS <: QuantityRepr
+    meaning::ANS_val
+end
+
+## type interface: add and compare
+add_objs(x::ANS) = ANS(ANS_val(Int(x) + sample(collect(1:2))))
+compare(x1::ANS, x2::ANS, op::Symbol) = Int(x1) / Int(x2) > thresh || Int(x2) / Int(x1) > thresh ? eval(op)(Int(x1), Int(x2)) : sample([true, false])
+
+# number symbols (wrapper around primitive quantity representations)
+[number_symbol_type_definition]
+
+include("type_system_casting_functions.jl")
+
+# primitive values
+## PI values: x, xx, xxx, xxxx
+x_ = PI(pi1)
+xx_ = PI(pi2)
+xxx_ = PI(pi3)
+xxxx_ = PI(pi4)
+
+## ANS values: ANS1, ANS2, ..., ANS10
+for i in 1:length(instances(ANS_val))
+    s = "ANS\$(i)_ = ANS(ans\$(i))" # e.g. ANS1_ = ANS(a1)
+    eval(Meta.parse(s))
+end
+
+## NS values: one, two, ... , ten
+[number_symbol_defns]
+
+## type interface: add and compare
+[compare_defn]
+[unit_add_defn]
+
+# RELATIONAL DSL: MACROS
+@relate (add_objs, NS) (next_word, String)
+
+@macro physical_expand()
+    elts = []
+    for num in number_list 
+        s = \"\"\"function \$(num)(set::Exact)
+        @match \$(num) set
+    end\"\"\"
+        push!(elts, s)
+    end
+    join(elts, "\\n\\n")
+end
+
+@physical"""
+
+include("define_languages.jl")
+spec = LX4_spec
+language_name_to_type_system = Dict()
+for language_name in language_names
+    println("----- $(language_name) -----")
+    spec = language_name_to_spec[language_name]
+    new_components, compressed_type_system_str, compiled_type_system_str = generate_type_system(spec)
+
+    println("COMPILED REPRESENTATION")
+    println(compiled_type_system_str)
+
+    println("\n")
+    println("NEW COMPONENTS")
+    println(new_components)
+
+    language_name_to_type_system[language_name] = (new_components, compressed_type_system_str, compiled_type_system_str)
+end
