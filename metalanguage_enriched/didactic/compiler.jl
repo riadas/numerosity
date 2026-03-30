@@ -27,7 +27,7 @@ function compile(lang_str::String; pretty=true)
         write(f, non_macro_segment)
     end
 
-    include("type_intermediate.jl")
+    include("$(dir_prefix)/type_intermediate.jl")
 
     # then evaluate nested @'s inside @macro definitions
     
@@ -263,7 +263,7 @@ end
 # - add type annotation to the top of each LoT file in the actual implementation
 # --- first: make sure generated code works for the pre-relate setting: DONE
 # --- second: figure out how to handle compare + unit add, here (i.e. choose the right/final abstractions) 
-# --- use a cache structure, to avoid compiling all the time; i.e. compile the different type systems/LoTs all at the start
+# --- use a cache structure, to avoid compiling all the time; i.e. compile the different type systems/LoTs all at the start -- DONE
 # - make a visualization of the changing type systems / LoTs
 # --- could switch to the RN setting first before doing this, but could also possibly make a small/simple visualization for completion purposes
 
@@ -271,7 +271,7 @@ end
 # (2) unit add -- DONE
 # (3) ANS-based definitions -- DONE
 
-function generate_type_system(spec)
+function generate_type_system(spec, dir_prefix="")
 
     base_type_definition = """struct NS
     label::String 
@@ -449,20 +449,28 @@ end
 
 @physical"""
 
-include("define_languages.jl")
-spec = LX4_spec
-language_name_to_type_system = Dict()
-for language_name in language_names
-    println("----- $(language_name) -----")
-    spec = language_name_to_spec[language_name]
-    new_components, compressed_type_system_str, compiled_type_system_str = generate_type_system(spec)
+function generate_type_systems(; define_langs=true, dir_prefix="")
+    if define_langs 
+        include("define_languages.jl")
+    end
 
-    println("COMPILED REPRESENTATION")
-    println(compiled_type_system_str)
+    language_name_to_type_system = Dict()
+    for language_name in language_names
+        println("----- $(language_name) -----")
+        spec = language_name_to_spec[language_name]
+        new_components, compressed_type_system_str, compiled_type_system_str = generate_type_system(spec, dir_prefix)
 
-    println("\n")
-    println("NEW COMPONENTS")
-    println(new_components)
+        println("COMPILED REPRESENTATION")
+        println(compiled_type_system_str)
 
-    language_name_to_type_system[language_name] = (new_components, compressed_type_system_str, compiled_type_system_str)
+        println("\n")
+        println("NEW COMPONENTS")
+        println(new_components)
+
+        language_name_to_type_system[language_name] = (new_components, compressed_type_system_str, compiled_type_system_str)
+    end
+
+    language_name_to_type_system
 end
+
+# language_name_to_type_system = generate_type_systems(define_langs=true)

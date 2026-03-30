@@ -42,7 +42,7 @@ for distance_modifier_index in 1:length(distance_modifiers)
         max_lots,
         CP_arrival_time,
         one_arrival_time,
-        two_arrival_time) = run_test("english", false, param_effects_memory_mod = modifier, param_effects_distance_mod = distance_modifier) # 8.630423783253967
+        two_arrival_time) = run_test("english", false, param_effects_memory_mod = modifier, param_effects_distance_mod = distance_modifier, override_recompute=true) # 8.630423783253967
 
         # utility order check
         utility_correct_order = check_phase_order(maxs, ["three", "four"], ["CP"], length(max_lots) + 1)

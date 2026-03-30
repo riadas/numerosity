@@ -270,7 +270,12 @@ function how_many(set::NumberRep, prob=false)
         end 
 
         if matches != []
-            prob ? 1/length(matches) : sample(matches)
+            actual_word = nums_to_number_words[set.value]
+            if actual_word in matches 
+                prob ? no_guess_prob * 1/length(matches) : sample(matches)
+            else
+                (1 - no_guess_prob) * 1/10
+            end
         else
             prob ? 1/max_num : sample(collect(keys(number_words_to_nums)))
         end
