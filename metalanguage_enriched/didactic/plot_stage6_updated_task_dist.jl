@@ -6,7 +6,8 @@ repeat_suffix = ""
 
 # GENERATE LANGUAGES
 include("define_languages.jl")
-language_names, language_names_pretty, language_name_to_spec, tups = generate_languages(all_languages=false)
+all_languages_bool = (@isdefined all_languages_bool) ? all_languages_bool : false
+language_names, language_names_pretty, language_name_to_spec, tups = generate_languages(all_languages=all_languages_bool)
 
 function get_language_name(language_identifier)
     if language_identifier isa Int # language index used
@@ -216,7 +217,6 @@ function compute_accuracies_efficient(dataset, normalized=true, recompute_base=f
     number_accuracies = []
     quantifier_accuracies = []
     for language_name in language_names
-        println("HMMMM")
         @show language_name
         overall_number_accuracy = 0.0
         overall_quantifier_accuracy = 0.0
@@ -565,9 +565,14 @@ function distance_between_specs(spec1, spec2, relate_factor=0.0; param_effects_d
     dist = dist * 3
     s = 0
     if dist != 0 
-        # TODO: add "not" check here
-        num_non_default_spec1 = count(k -> !occursin("quantifier", k) && (spec1[k] != default_spec[k]) || occursin("quantifier", k) && filter(x -> spec1[k][x], collect(keys(spec1[k]))) != [], collect(keys(spec1))) 
-        num_non_default_spec2 = count(k -> !occursin("quantifier", k) && (spec2[k] != default_spec[k]) || occursin("quantifier", k) && filter(x -> spec2[k][x], collect(keys(spec2[k]))) != [], collect(keys(spec2))) 
+        # # TODO: add "not" check here
+        # num_non_default_spec1 = count(k -> !occursin("quantifier", k) && (spec1[k] != default_spec[k]) || occursin("quantifier", k) && filter(x -> spec1[k][x], collect(keys(spec1[k]))) != [], collect(keys(spec1))) 
+        # num_non_default_spec2 = count(k -> !occursin("quantifier", k) && (spec2[k] != default_spec[k]) || occursin("quantifier", k) && filter(x -> spec2[k][x], collect(keys(spec2[k]))) != [], collect(keys(spec2))) 
+        
+        num_non_default_spec1 = count(k -> !occursin("quantifier", k) && (spec1[k] isa AbstractString) && (spec1[k] != default_spec[k]) && !occursin("not", spec1[k]) || occursin("quantifier", k) && filter(x -> spec1[k][x], collect(keys(spec1[k]))) != [], collect(keys(spec1))) 
+        num_non_default_spec2 = count(k -> !occursin("quantifier", k) && (spec2[k] isa AbstractString) && (spec2[k] != default_spec[k]) && !occursin("not", spec2[k]) || occursin("quantifier", k) && filter(x -> spec2[k][x], collect(keys(spec2[k]))) != [], collect(keys(spec2))) 
+
+        
         if num_non_default_spec1 > num_non_default_spec2
             s = 1 
         else
@@ -586,7 +591,7 @@ function distance_between_specs(spec1, spec2, relate_factor=0.0; param_effects_d
                 end
                 # dist = dist * 10
             else
-                dist = 30.5 - 30.4 * relate_factor # 200 - 199.5 * relate_factor
+                dist = 30.5 - 30.4 * relate_factor
                 if !spec1["ANS_reconciled"] && spec2["ANS_reconciled"]
                     dist += 1.5
                 end
@@ -858,7 +863,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
             if intervention_small 
                 # low number 
                 task_dict["give_1"] += 0
-                task_dict["give_2"] += 0
+                task_dict["give_2"] += 1
                 task_dict["give_3"] += 1
     
                 if intervention_count 
@@ -872,7 +877,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
                 task_dict["give_6"] += 0
                 task_dict["give_7"] += 0
                 task_dict["give_8"] += 0
-                task_dict["give_9"] += 0
+                task_dict["give_9"] += 1
                 task_dict["give_10"] += 1
 
                 if intervention_count 

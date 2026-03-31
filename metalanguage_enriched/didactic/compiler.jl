@@ -331,16 +331,19 @@ end"""
         push!(clauses, "else\n        break\n    end")
     end
 
+    relate_line = ""
     if spec["full_knower_compression"] != default_spec["full_knower_compression"] # standard full-knower compression
         clauses = clauses[1:end-1]
         final_clause = """else\n        s = \"\$(word)_ = NS(\\"\$(word)\\", :(add_obj(\$(prev_word(word)), one_)))\"\nend"""
-        push!(clauses, final_clause)        
+        push!(clauses, final_clause)  
+        relate_line = "\n@relate (add_obj, NS) (next_word, String)"      
     end
 
     if spec["approx"]
         clauses = clauses[1:end-1]
         final_clause = """else\n        s = \"\$(word)_ = NS(\\"\$(word)\\", :(add_objs(\$(prev_word(word)), ANS1_)))\"\nend"""
         push!(clauses, final_clause)
+        relate_line = "\n@relate (add_objs, NS) (next_word, String)"
     end
 
     if defn_count != 0 
@@ -359,12 +362,14 @@ end"""
         unit_add_defn = "unit_add(x::NS) = add_obj(x)"
     end
 
-    new_components = join([type_definition, number_symbol_defns, compare_defn, unit_add_defn], "\n\n")
+    new_components = join([type_definition, replace(relate_line, "\n" => ""), number_symbol_defns, compare_defn, unit_add_defn], "\n\n")
+    new_components = replace(new_components, "\n\n\n" => "\n\n")
     println("NEW COMPONENTS")
     println(new_components)
     println("\n")
     
     type_system_str = replace(type_system_template, "[number_symbol_type_definition]" => type_definition)
+    type_system_str = replace(type_system_str, "[relate_line]" => relate_line)
     type_system_str = replace(type_system_str, "[number_symbol_defns]" => number_symbol_defns)
     type_system_str = replace(type_system_str, "[compare_defn]" => compare_defn)
     type_system_str = replace(type_system_str, "[unit_add_defn]" => unit_add_defn)
@@ -433,8 +438,7 @@ end
 [compare_defn]
 [unit_add_defn]
 
-# RELATIONAL DSL: MACROS
-@relate (add_objs, NS) (next_word, String)
+# RELATIONAL DSL: MACROS[relate_line]
 
 @macro physical_expand()
     elts = []

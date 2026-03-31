@@ -24,7 +24,7 @@ for distance_modifier_index in 1:length(distance_modifiers)
     utility_results = []
     MAP_results = []
 
-    modifiers = collect(-0.59:0.01:0.59) # collect(-1.18:0.02:1.18)
+    modifiers = collect(-0.59:0.02:0.59) # collect(-0.59:0.01:0.59) # collect(-1.18:0.02:1.18)
     for modifier_index in 1:length(modifiers)
         @show modifier_index 
         modifier = modifiers[modifier_index]
