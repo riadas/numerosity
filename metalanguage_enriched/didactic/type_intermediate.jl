@@ -1,39 +1,47 @@
+function add_objs(x::NS)
+    NS(next_word(String(x)))
+end
+    
+function remove_objs(x::NS)
+    NS(prev_word(String(x)))
+end
+
 function one(set::Exact)
-	set.value == xxx_
+	set.value == ANS1_
     end
 
 function two(set::Exact)
-	not(map(x -> x(set), [one]))
+	one(remove_objs(set, ANS1_))
     end
 
 function three(set::Exact)
-	not(map(x -> x(set), [one]))
+	two(remove_objs(set, ANS1_))
     end
 
 function four(set::Exact)
-	not(map(x -> x(set), [one]))
+	three(remove_objs(set, ANS1_))
     end
 
 function five(set::Exact)
-	not(map(x -> x(set), [one]))
+	four(remove_objs(set, ANS1_))
     end
 
 function six(set::Exact)
-	not(map(x -> x(set), [one]))
+	five(remove_objs(set, ANS1_))
     end
 
 function seven(set::Exact)
-	not(map(x -> x(set), [one]))
+	six(remove_objs(set, ANS1_))
     end
 
 function eight(set::Exact)
-	not(map(x -> x(set), [one]))
+	seven(remove_objs(set, ANS1_))
     end
 
 function nine(set::Exact)
-	not(map(x -> x(set), [one]))
+	eight(remove_objs(set, ANS1_))
     end
 
 function ten(set::Exact)
-	not(map(x -> x(set), [one]))
+	nine(remove_objs(set, ANS1_))
     end
