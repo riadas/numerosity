@@ -537,9 +537,9 @@ plot(accuracy_plot, memory_cost_plot, computation_cost_plot, layout=(3, 1), size
 
 # COMPUTE UTILITY FUNCTION
 function compute_utility(language_index, t)
-    unscaled_utility = gamma_c*t*accuracies[language_index] - cost_c *(memory_costs[language_index] + computational_costs[language_index] - 0.50)
+    unscaled_utility = gamma_c*t*accuracies[language_index] - cost_c * (memory_costs[language_index] + computational_costs[language_index] - 0.50)
     # @show unscaled_utility
-    0.3 * (unscaled_utility - 0.7) - 20
+    10 * (0.3 * (unscaled_utility - 0.7) - 20)
 end
 
 # COMPUTE DISCOVERY COSTS
@@ -665,7 +665,7 @@ end
 transition_prob_identity_base = 0.975
 transition_prob_identity_rate = 0.004 # 0.0003
 transition_prob_base = 9.0 # 2
-utility_base = 1.0e13
+utility_base = 20
 
 time_step_unit = 0.1 # 0.0005 # 0.00005 
 num_time_steps = 1000
@@ -776,46 +776,15 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
     end
 
     # accuracies[1] = 0.0
-
+    
     # COSTS 
-
-    # global memory_costs = [ # TODO
-    #     0.00, # L0: non-knower
-    #     0.15, # L1: 1-knower
-    #     0.30, # 2-knower
-    #     0.34, # 2-knower, approx
-    #     0.45, # 3-knower
-    #     0.49, # 3-knower, approx 
-    #     0.6, # 4-knower
-    #     0.35, # CP-knower # 0.41
-    #     0.5, # CP-mapper
-    #     0.65, # CP-unit-knower # normalized setting: 0.7
-    # ]
     global memory_costs = compute_all_memory_costs(param_effects_memory_mod)
     global memory_costs = memory_costs .* 2
-    # global computational_costs = compute_all_computation_costs() .+ 0.48
-
-    global computational_costs = [ # TODO
-    0.48, # L0: non-knower
-    0.50, # L1: 1-knower
-    0.50, # 2-knower
-    0.565, # 2-knower, approx # previously: 0.50
-    0.50, # 3-knower
-    0.565, # 3-knower, approx # previously: 0.50
-    0.50, # 4-knower
-    0.565, # CP-knower
-    0.54, # CP-mapper
-    0.515, # CP-unit-knower
-    0.50, # LX1
-    0.50, # LX2
-    0.50, # LX3
-    0.565, # LX1.5
-]
-
+    global computational_costs = compute_all_computation_costs() .+ 0.48
+    global computational_costs = computational_costs[(length(new_language_names) + 1):end]
 
     modified_colors = [modified_colors..., :darkgray, :gray76, :gray86, :gray95]
     modified_colors = [modified_colors..., map(x -> :burlywood2, tups)...]
-    computational_costs = [computational_costs..., map(x -> 0.50, tups)...]
 
     @show new_language_names
     if new_language_names != []
@@ -826,24 +795,11 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
     end
     @show computational_costs
 
-    # three bar plots: accuracy, memory_cost, computational_cost
-    # one line plot: utilities over time
-    # heat map 1: transition probabilities
-    # heat map 2: max utility x transition probabilities 
-
     accuracy_plot, memory_cost_plot, computation_cost_plot = plot_utility_components(accuracies, memory_costs, computational_costs, modified_colors)
     # plot(accuracy_plot, memory_cost_plot, computation_cost_plot, layout=(3, 1), size=(600, 525 * 3))
 
     maxs, line_plot, max_utility_plot = plot_utility_evolution(modified_colors)
     # plot(line_plot, max_utility_plot, layout=(2, 1), size=(600, 550))
-
-    # _, h0 = compute_transition_probabilities(0, "t=0")
-    # _, h20 = compute_transition_probabilities(1000, "t=100")
-    # _, h40 = compute_transition_probabilities(2000, "t=200")
-    # _, h60 = compute_transition_probabilities(3000, "t=300")
-    # _, h80 = compute_transition_probabilities(4000, "t=400")
-    # _, h100 = compute_transition_probabilities(5000, "t=500")
-    # plot(h0, h20, h40, h60, h80, h100)
 
     three_knower_stage_reached = false
     three_knower_stage_intervention_made = false
