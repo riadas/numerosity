@@ -665,13 +665,17 @@ end
 transition_prob_identity_base = 0.975
 transition_prob_identity_rate = 0.004 # 0.0003
 transition_prob_base = 9.0 # 2
-utility_base = 20
+utility_base = 20.0
 
 time_step_unit = 0.1 # 0.0005 # 0.00005 
 num_time_steps = 1000
 
 gamma_c = 1.2 # 1.0 # 1.2
 cost_c = 0.5 # 0.015 # 0.008
+
+# rate at which CP induction `@relate` discovery cost from 3+ knower stage linearly decreases with time
+relate_factor_coefficient = 0.39 # below option can also be experimented with! (new)
+# relate_factor_coefficient = sqrt(utility_base / transition_prob_base) * 0.26 # 0.39
 
 accuracies = []
 memory_costs = []
@@ -855,7 +859,7 @@ function run_test(test_name_, normalized=true, intervention=false, intervention_
         # utility_sum = sum(map(x -> utility_base^(compute_utility(x, t)), 1:length(language_names)))
         
         relate_factor = relate_factors[end]
-        relate_factor = relate_factor + time_step_unit * counting_task_proportion * 0.39 # 0.45
+        relate_factor = relate_factor + time_step_unit * counting_task_proportion * relate_factor_coefficient # 0.39 # 0.45
         relate_factor = relate_factor > 1 ? 1 : relate_factor
         push!(relate_factors, relate_factor)
 
